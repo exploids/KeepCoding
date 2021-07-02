@@ -51,9 +51,7 @@ void setup() {
 
   //Hier könnt ihr bestimmen, welche Spiele im Modul enthalten sein sollen. Aktuell ist es vier mal das Spiel "EasyGame". Das Spiel "LoffelRatsel" (auskommentiert) ist ein Beispiel, wie ihr ein Modul hinzufügen könntet.
   allGamenames.add("EasyGame");
-  allGamenames.add("EasyGame");
-  allGamenames.add("EasyGame");
-  allGamenames.add("EasyGame");
+  allGamenames.add(ArrangeShapes.class.getSimpleName());
   //allGamenames.add("LoffelRatsel");
 
   anzahlModuleOhneTimer = allGamenames.size();
@@ -77,6 +75,7 @@ void setup() {
   //HIER MÜSST IHR EUER SPIEL "REGISTRIEREN". Dazu wie im Beispiel von "LoffelRatsel" (auskommentiert) zum einen den String in der If-Abfrage anpassen, und den Klassennamen auf den Namen eurer Klasse ändern.
   for (int i = 1; i<=allGamenames.size(); i++) {
     if (allGamenames.get(i-1).equals("EasyGame")) games.add( new EasyGame((i%teileX)*gameSize+(i%teileX)*abstand*2+abstand, abstand+(i/teileX)*gameSize+(i/teileX)*abstand*2, this));
+    if (allGamenames.get(i-1).equals(ArrangeShapes.class.getSimpleName())) games.add( new ArrangeShapes((i%teileX)*gameSize+(i%teileX)*abstand*2+abstand, abstand+(i/teileX)*gameSize+(i/teileX)*abstand*2, this));
     //if (allGamenames.get(i-1).equals("LoffelRatsel")) games.add( new LoffelRatsel((i%teileX)*gameSize+(i%teileX)*abstand*2+abstand, abstand+(i/teileX)*gameSize+(i/teileX)*abstand*2, this));
   }
 
