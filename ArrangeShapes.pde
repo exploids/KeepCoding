@@ -140,6 +140,16 @@ class ArrangeShapes extends Game {
     pushMatrix();
     translate(deltaX, deltaY);
     int animationEnd = animationStart + animationDuration;
+    if (isActive()) {
+      boolean move = false;
+      for (int i = 0; i < things.length; i++) {
+        if (things[i].collidesWith(getMouseX(), getMouseY())) {
+          move = true;
+          break;
+        }
+      }
+      cursor(move ? MOVE : ARROW);
+    }
     if (isActive() || time < animationEnd) {
       drawShapes();
       primaryColor = REGULAR_BACKGROUND_COLOR;
@@ -241,19 +251,6 @@ class ArrangeShapes extends Game {
       draggedThing = null;
       playRandom(dropSound);
       checkSolved();
-    }
-  }
-
-  void mouseMove() {
-    if (isActive()) {
-      boolean move = false;
-      for (int i = 0; i < things.length; i++) {
-        if (things[i].collidesWith(getMouseX(), getMouseY())) {
-          move = true;
-          break;
-        }
-      }
-      cursor(move ? MOVE : ARROW);
     }
   }
 
