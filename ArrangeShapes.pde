@@ -56,8 +56,6 @@ class ArrangeShapes extends Game {
   // http://sfxr.me/#7BMHBGDL2adeXGUejPTtTeJ8gsWdknZVP75kzvxaZzVy4jF7a3Pip4nB3egi61RiYVcVMtLMLLQLM3FsGHG6PcuHQyqVV5SvwBM9P7rVCQnKunJpzy77oWuY3
   SoundFile collideSound;
 
-  boolean failed = false;
-
   PImage frameImage;
   PImage filterImage;
   PImage glowImage;
@@ -67,6 +65,8 @@ class ArrangeShapes extends Game {
   Thing draggedThing;
   float dragDeltaX;
   float dragDeltaY;
+  float dragOriginalX;
+  float dragOriginalY;
 
   boolean[] conditions;
   boolean[] fulfilledA;
@@ -112,10 +112,11 @@ class ArrangeShapes extends Game {
     if (draggedThing != null) {
       if (isActive()) {
         draggedThing.move(getMouseX() + dragDeltaX, getMouseY() + dragDeltaY);
-        for (int i = 0; i < things.length && !failed; i++) {
+        for (int i = 0; i < things.length && draggedThing != null; i++) {
           if (things[i] != draggedThing && draggedThing.collidesWith(things[i])) {
-            failed = true;
-            animationStart = time;
+            draggedThing.move(dragOriginalX, dragOriginalY);
+            draggedThing = null;
+            ownMistakes++;
             collideSound.play();
             cursor(ARROW);
           }
@@ -153,11 +154,11 @@ class ArrangeShapes extends Game {
     }
     if (!isActive()) {
       drawEnd();
-      primaryColor = solved ? SOLVED_BACKGROUND_COLOR : FAILED_BACKGROUND_COLOR;
+      primaryColor = SOLVED_BACKGROUND_COLOR;
     }
     noClip();
     if (time >= animationStart && time < animationEnd) {
-      primaryColor = lerpColor(REGULAR_BACKGROUND_COLOR, solved ? SOLVED_BACKGROUND_COLOR : FAILED_BACKGROUND_COLOR, factor);
+      primaryColor = lerpColor(REGULAR_BACKGROUND_COLOR, SOLVED_BACKGROUND_COLOR, factor);
     }
     fill(0, 31);
     noStroke();
@@ -206,22 +207,16 @@ class ArrangeShapes extends Game {
   }
 
   void drawEnd() {
-    fill(solved ? SOLVED_BACKGROUND_COLOR : FAILED_BACKGROUND_COLOR);
+    fill(SOLVED_BACKGROUND_COLOR);
     noStroke();
     rect(OUTER_MIN_X, OUTER_MIN_Y, OUTER_WIDTH, OUTER_HEIGHT);
     imageMode(CENTER);
     image(errorIcon, OUTER_MIN_X + OUTER_WIDTH * 0.5, INNER_MIN_Y + 100);
     imageMode(CORNER);
-    String text;
-    if (solved) {
-      text = "DEAKTIVIERT";
-    } else {
-      text = "FEHLER";
-    }
     fill(255);
     textFont(titleFont);
     textAlign(CENTER, TOP);
-    text(text, OUTER_MIN_X + OUTER_WIDTH * 0.5, INNER_MIN_Y + 140);
+    text("DEAKTIVIERT", OUTER_MIN_X + OUTER_WIDTH * 0.5, INNER_MIN_Y + 140);
     textAlign(LEFT, BASELINE);
   }
 
@@ -230,6 +225,8 @@ class ArrangeShapes extends Game {
       for (int i = 0; i < things.length; i++) {
         if (things[i].collidesWith(getMouseX(), getMouseY())) {
           draggedThing = things[i];
+          dragOriginalX = draggedThing.x;
+          dragOriginalY = draggedThing.y;
           dragDeltaX = draggedThing.x - getMouseX();
           dragDeltaY = draggedThing.y - getMouseY();
           playRandom(dragSound);
@@ -326,7 +323,7 @@ class ArrangeShapes extends Game {
   }
 
   boolean isActive() {
-    return !solved && !failed;
+    return !solved;
   }
 
   boolean isColorLeftOfColor(int left, int right) {
