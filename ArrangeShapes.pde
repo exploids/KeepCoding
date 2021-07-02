@@ -1,5 +1,5 @@
 import processing.sound.*;
-
+/*
 final String PREFIX = "ArrangeShapes/";
 
 final int SHAPE_RECTANGLE = 0;
@@ -193,6 +193,7 @@ void drawShapes() {
    line(draggedThing.minX(), OUTER_MIN_Y, draggedThing.minX(), OUTER_MAX_Y);
    line(draggedThing.maxX(), OUTER_MIN_Y, draggedThing.maxX(), OUTER_MAX_Y);
    }*/
+   /*
 }
 
 void drawEnd() {
@@ -533,3 +534,4 @@ void projectPolygon(PVector axis, PShape polygon, PVector minMax) {
     }
   }
 }
+*/
