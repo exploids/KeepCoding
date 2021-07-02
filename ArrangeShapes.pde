@@ -13,17 +13,17 @@ class ArrangeShapes extends Game {
   final int GREEN = 2;
   final int RED = 3;
 
-  final float INNER_MIN_X = 60;
-  final float INNER_MIN_Y = 68;
-  final float INNER_MAX_X = 339;
-  final float INNER_MAX_Y = 334;
+  final int INNER_MIN_X = 60;
+  final int INNER_MIN_Y = 68;
+  final int INNER_MAX_X = 339;
+  final int INNER_MAX_Y = 334;
 
-  final float OUTER_MIN_X = 55;
-  final float OUTER_MIN_Y = 62;
-  final float OUTER_MAX_X = 355;
-  final float OUTER_MAX_Y = 340;
-  final float OUTER_WIDTH = OUTER_MAX_X - OUTER_MIN_X;
-  final float OUTER_HEIGHT = OUTER_MAX_Y - OUTER_MIN_Y;
+  final int OUTER_MIN_X = 55;
+  final int OUTER_MIN_Y = 62;
+  final int OUTER_MAX_X = 355;
+  final int OUTER_MAX_Y = 340;
+  final int OUTER_WIDTH = OUTER_MAX_X - OUTER_MIN_X;
+  final int OUTER_HEIGHT = OUTER_MAX_Y - OUTER_MIN_Y;
 
   final color OFF_COLOR = #322b28;
   final color REGULAR_BACKGROUND_COLOR = OFF_COLOR;
@@ -61,6 +61,10 @@ class ArrangeShapes extends Game {
   PImage glowImage;
   PImage errorIcon;
   PFont titleFont;
+
+  PGraphics sourceBuffer;
+  PGraphics maskBuffer;
+
   Thing[] things;
   Thing draggedThing;
   float dragDeltaX;
@@ -72,9 +76,22 @@ class ArrangeShapes extends Game {
   boolean[] fulfilledA;
   boolean[] fulfilledB;
 
+  int animationTime;
+
   int animationDuration = 500;
   int animationStart = -animationDuration;
   color primaryColor;
+
+  float collisionX;
+  float collisionY;
+  Thing collidedThing;
+  float explosionDuration = 500;
+  float explosionStart = -explosionDuration;
+  float explosionX;
+  float explosionY;
+  float explosionDiameter = 140;
+  float explosionOffset;
+  float explosionAngle;
 
   float barStart;
   float barDuration;
@@ -98,6 +115,8 @@ class ArrangeShapes extends Game {
     dropSound = new SoundFile(sketch, PREFIX + "drop.mp3");
     solveSound = new SoundFile(sketch, PREFIX + "solve.mp3");
     collideSound = new SoundFile(sketch, PREFIX + "collide.mp3");
+    sourceBuffer = createGraphics(OUTER_WIDTH, OUTER_HEIGHT);
+    maskBuffer = createGraphics(OUTER_WIDTH, OUTER_HEIGHT);
     things = new Thing[10];
     conditions = new boolean[4];
     fulfilledA = new boolean[conditions.length];
@@ -108,13 +127,21 @@ class ArrangeShapes extends Game {
   }
 
   void update() {
-    int time = millis();
+    animationTime = millis();
     if (draggedThing != null) {
       if (isActive()) {
         draggedThing.move(getMouseX() + dragDeltaX, getMouseY() + dragDeltaY);
         for (int i = 0; i < things.length && draggedThing != null; i++) {
-          if (things[i] != draggedThing && draggedThing.collidesWith(things[i])) {
-            draggedThing.move(dragOriginalX, dragOriginalY);
+          Thing collided = things[i];
+          if (collided != draggedThing && draggedThing.collidesWith(collided)) {
+            explosionStart = animationTime;
+            collisionX = draggedThing.x;
+            collisionY = draggedThing.y;
+            collidedThing = draggedThing;
+            explosionX = (draggedThing.x + collided.x) * 0.5;
+            explosionY = (draggedThing.y + collided.y) * 0.5;
+            explosionOffset = random(5) + 5;
+            explosionAngle = random(TWO_PI);
             draggedThing = null;
             ownMistakes++;
             collideSound.play();
@@ -123,20 +150,28 @@ class ArrangeShapes extends Game {
         }
       }
     }
-    if (time >= barStart + barDuration) {
-      barStart = time;
+    if (animationTime >= barStart + barDuration) {
+      barStart = animationTime;
       barDuration = random(5000) + 5000;
       barSize = pow(random(6), 2) + 6;
     }
-    if (time >= dimEnd) {
+    if (animationTime >= dimEnd) {
       dim = !dim;
       int duration = dim ? 2000 : 8000;
-      dimEnd = time + random(duration) + 500;
+      dimEnd = animationTime + random(duration) + 500;
+    }
+    float explosionProgress = (animationTime - explosionStart) / explosionDuration;
+    if (explosionProgress > 0.25 && explosionProgress < 0.75) {
+      float stepX = map(explosionProgress, 0.25, 0.75, collisionX, dragOriginalX);
+      float stepY = map(explosionProgress, 0.25, 0.75, collisionY, dragOriginalY);
+      collidedThing.move(stepX, stepY);
+    } else if (explosionProgress >= 0.75 && collidedThing != null) {
+      collidedThing.move(dragOriginalX, dragOriginalY);
+      collidedThing = null;
     }
   }
 
   void render() {
-    int time = millis();
     pushMatrix();
     translate(deltaX, deltaY);
     int animationEnd = animationStart + animationDuration;
@@ -150,29 +185,30 @@ class ArrangeShapes extends Game {
       }
       cursor(move ? MOVE : ARROW);
     }
-    if (isActive() || time < animationEnd) {
+    if (isActive() || animationTime < animationEnd) {
       drawShapes();
       primaryColor = REGULAR_BACKGROUND_COLOR;
     }
-    float factor = (time - animationStart) / (float) animationDuration;
-    if (time >= animationStart && time < animationEnd) {
+    float factor = (animationTime - animationStart) / (float) animationDuration;
+    if (animationTime >= animationStart && animationTime < animationEnd) {
       float boxWidth = OUTER_WIDTH * factor;
       float boxHeight = OUTER_HEIGHT * factor;
       imageMode(CENTER);
       clip((OUTER_MIN_X + OUTER_MAX_X) * 0.5, (OUTER_MIN_Y + OUTER_MAX_Y) * 0.5, boxWidth, boxHeight);
       imageMode(CORNER);
     }
+    renderExplosion();
     if (!isActive()) {
       drawEnd();
       primaryColor = SOLVED_BACKGROUND_COLOR;
     }
     noClip();
-    if (time >= animationStart && time < animationEnd) {
+    if (animationTime >= animationStart && animationTime < animationEnd) {
       primaryColor = lerpColor(REGULAR_BACKGROUND_COLOR, SOLVED_BACKGROUND_COLOR, factor);
     }
     fill(0, 31);
     noStroke();
-    rect(OUTER_MIN_X, map(time - barStart, 0, barDuration, OUTER_MIN_Y - barSize, OUTER_MAX_Y), OUTER_MAX_X - OUTER_MIN_X, barSize);
+    rect(OUTER_MIN_X, map(animationTime - barStart, 0, barDuration, OUTER_MIN_Y - barSize, OUTER_MAX_Y), OUTER_MAX_X - OUTER_MIN_X, barSize);
     if (dim) {
       fill(0, 31);
       rectMode(CORNERS);
@@ -197,6 +233,31 @@ class ArrangeShapes extends Game {
       }
     }
     popMatrix();
+  }
+
+  void renderExplosion() {
+    float explosionProgress = (animationTime - explosionStart) / explosionDuration;
+    if (explosionProgress > 0 && explosionProgress < 1) {
+      float diameter = explosionProgress * explosionDiameter;
+      float innerDiameter = max(explosionProgress - 0.5, 0) * 2 * (explosionDiameter + 2 * explosionOffset);
+      float innerX = explosionX + cos(explosionAngle) * explosionOffset;
+      float innerY = explosionY + sin(explosionAngle) * explosionOffset;
+      sourceBuffer.beginDraw();
+      sourceBuffer.background(255);
+      sourceBuffer.endDraw();
+      maskBuffer.beginDraw();
+      maskBuffer.translate(-OUTER_MIN_X, -OUTER_MIN_Y);
+      maskBuffer.background(0);
+      maskBuffer.fill(255);
+      maskBuffer.noStroke();
+      maskBuffer.ellipseMode(CENTER);
+      maskBuffer.circle(explosionX, explosionY, diameter);
+      maskBuffer.fill(0);
+      maskBuffer.circle(innerX, innerY, innerDiameter);
+      maskBuffer.endDraw();
+      sourceBuffer.mask(maskBuffer);
+      image(sourceBuffer, OUTER_MIN_X, OUTER_MIN_Y);
+    }
   }
 
   void drawShapes() {
@@ -231,7 +292,7 @@ class ArrangeShapes extends Game {
   }
 
   void mousePress() {
-    if (isActive()) {
+    if (isActive() && animationTime > explosionStart + explosionDuration) {
       for (int i = 0; i < things.length; i++) {
         if (things[i].collidesWith(getMouseX(), getMouseY())) {
           draggedThing = things[i];
@@ -294,10 +355,9 @@ class ArrangeShapes extends Game {
 
   void checkSolved() {
     if (areConditionsMet()) {
-      solved = true;
       cursor(ARROW);
-      solveSound.play();
       animationStart = millis();
+      solved = true;
     }
   }
 
