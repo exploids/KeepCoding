@@ -143,7 +143,7 @@ class ArrangeShapes extends Game {
     fulfilledB = new boolean[conditions.length];
     do {
       generateShapes();
-    } while (areConditionsMet());
+    } while (conditionsAreFulfilled());
   }
 
   void update() {
@@ -364,22 +364,22 @@ class ArrangeShapes extends Game {
   }
 
   void checkSolved() {
-    if (areConditionsMet()) {
+    if (conditionsAreFulfilled()) {
       cursor(ARROW);
       animationStart = millis();
       solved = true;
     }
   }
 
-  boolean areConditionsMet() {
-    fulfilledA[0] = isColorAboveColor(PURPLE, RED);
-    fulfilledB[0] = isColorLeftOfColor(YELLOW, PURPLE);
-    fulfilledA[1] = isColorLeftOfColor(PURPLE, GREEN);
-    fulfilledB[1] = isColorAboveColor(PURPLE, YELLOW);
-    fulfilledA[2] = areShapesOnTop(SHAPE_TRIANGLE, SHAPE_CIRCLE);
-    fulfilledB[2] = areShapesOnTop(SHAPE_RECTANGLE, SHAPE_SQUARE);
-    fulfilledA[3] = isColorLeftOfColor(GREEN, RED);
-    fulfilledB[3] = isColorLeftOfColor(RED, YELLOW);
+  boolean conditionsAreFulfilled() {
+    fulfilledA[0] = colorIsLeftOrAboveColor(PURPLE, RED, Y);
+    fulfilledB[0] = colorIsLeftOrAboveColor(YELLOW, PURPLE, X);
+    fulfilledA[1] = colorIsLeftOrAboveColor(PURPLE, GREEN, X);
+    fulfilledB[1] = colorIsLeftOrAboveColor(PURPLE, YELLOW, Y);
+    fulfilledA[2] = shapesAreOnTop(1 << SHAPE_TRIANGLE | 1 << SHAPE_CIRCLE);
+    fulfilledB[2] = shapesAreOnTop(1 << SHAPE_RECTANGLE | 1 << SHAPE_SQUARE);
+    fulfilledA[3] = colorIsLeftOrAboveColor(GREEN, RED, X);
+    fulfilledB[3] = colorIsLeftOrAboveColor(RED, YELLOW, X);
     boolean solved = true;
     for (int i = 0; i < conditions.length; i++) {
       if (conditions[i] ? !fulfilledA[i] : !fulfilledB[i]) {
@@ -389,15 +389,7 @@ class ArrangeShapes extends Game {
     return solved;
   }
 
-  boolean isColorLeftOfColor(int left, int right) {
-    return isColorCoordinateLess(left, right, X);
-  }
-
-  boolean isColorAboveColor(int top, int bottom) {
-    return isColorCoordinateLess(top, bottom, Y);
-  }
-
-  boolean isColorCoordinateLess(int less, int greater, int axis) {
+  boolean colorIsLeftOrAboveColor(int less, int greater, int axis) {
     for (int a = 0; a < THING_COUNT; a++) {
       for (int b = 0; b < THING_COUNT; b++) {
         if (a != b && thingColors[a] == less && thingColors[b] == greater && center(a, axis) >= center(b, axis)) {
@@ -408,10 +400,10 @@ class ArrangeShapes extends Game {
     return true;
   }
 
-  boolean areShapesOnTop(int shapeA, int shapeB) {
+  boolean shapesAreOnTop(int shapes) {
     for (int a = 0; a < THING_COUNT; a++) {
       for (int b = 0; b < THING_COUNT; b++) {
-        if (a != b && thingColors[a] == thingColors[b] && (thingShapes[a] == shapeA || thingShapes[a] == shapeB) && thingShapes[b] != shapeA && thingShapes[b] != shapeB && center(a, Y) >= center(b, Y)) {
+        if (a != b && thingColors[a] == thingColors[b] && (1 << thingShapes[a] & shapes) != 0 && (1 << thingShapes[b] & shapes) == 0 && center(a, Y) >= center(b, Y)) {
           return false;
         }
       }
