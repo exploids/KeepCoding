@@ -152,13 +152,13 @@ class ArrangeShapes extends Game {
     if (dragged != NONE && isActive()) {
       move(dragged, getMouseX() + dragDeltaX, getMouseY() + dragDeltaY);
       for (int other = 0; other < THING_COUNT && dragged != NONE; other++) {
-        if (other != dragged && collidesWith(dragged, other)) {
+        if (other != dragged && thingsCollide(dragged, other)) {
           explosionStart = animationTime;
-          collisionX = minX(dragged);
-          collisionY = minY(dragged);
+          collisionX = position(dragged, X);
+          collisionY = position(dragged, Y);
           collided = dragged;
-          explosionX = (centerX(dragged) + centerX(other)) * 0.5;
-          explosionY = (centerY(dragged) + centerY(other)) * 0.5;
+          explosionX = (center(dragged, X) + center(other, X)) * 0.5;
+          explosionY = (center(dragged, Y) + center(other, Y)) * 0.5;
           explosionOffset = random(5) + 5;
           explosionAngle = random(TWO_PI);
           dragged = NONE;
@@ -196,7 +196,7 @@ class ArrangeShapes extends Game {
     if (isActive()) {
       boolean move = false;
       for (int thing = 0; thing < THING_COUNT; thing++) {
-        if (collidesWith(thing, getMouseX(), getMouseY())) {
+        if (thingsCollide(thing, getMouseX(), getMouseY())) {
           move = true;
           break;
         }
@@ -304,10 +304,10 @@ class ArrangeShapes extends Game {
   void mousePress() {
     if (isActive() && animationTime > explosionStart + explosionDuration) {
       for (int thing = 0; thing < THING_COUNT; thing++) {
-        if (collidesWith(thing, getMouseX(), getMouseY())) {
+        if (thingsCollide(thing, getMouseX(), getMouseY())) {
           dragged = thing;
-          dragOriginalX = minX(thing);
-          dragOriginalY = minY(thing);
+          dragOriginalX = position(thing, X);
+          dragOriginalY = position(thing, Y);
           dragDeltaX = dragOriginalX - getMouseX();
           dragDeltaY = dragOriginalY - getMouseY();
           playRandom(dragSound);
@@ -344,10 +344,10 @@ class ArrangeShapes extends Game {
       }
       boolean notFinal = true;
       while (notFinal) {
-        move(thing, random(INNER_MIN_X, INNER_MAX_X - thingDimension(thing, X)), random(INNER_MIN_Y, INNER_MAX_Y - thingDimension(thing, Y)));
+        move(thing, random(INNER_MIN_X, INNER_MAX_X - extent(thing, X)), random(INNER_MIN_Y, INNER_MAX_Y - extent(thing, Y)));
         notFinal = false;
         for (int other = 0; other < thing; other++) {
-          if (collidesWithBounds(thing, other, 4)) {
+          if (boundsCollide(thing, other, 4)) {
             notFinal = true;
             break;
           }
@@ -405,7 +405,7 @@ class ArrangeShapes extends Game {
   boolean isColorCoordinateLess(int less, int greater, int axis) {
     for (int a = 0; a < THING_COUNT; a++) {
       for (int b = 0; b < THING_COUNT; b++) {
-        if (a != b && thingColors[a] == less && thingColors[b] == greater && midCoordinate(a, axis, 0.5) >= midCoordinate(b, axis, 0.5)) {
+        if (a != b && thingColors[a] == less && thingColors[b] == greater && center(a, axis) >= center(b, axis)) {
           return false;
         }
       }
@@ -416,7 +416,7 @@ class ArrangeShapes extends Game {
   boolean areShapesOnTop(int shapeA, int shapeB) {
     for (int a = 0; a < THING_COUNT; a++) {
       for (int b = 0; b < THING_COUNT; b++) {
-        if (a != b && thingColors[a] == thingColors[b] && (thingShapes[a] == shapeA || thingShapes[a] == shapeB) && thingShapes[b] != shapeA && thingShapes[b] != shapeB && centerY(a) >= centerY(b)) {
+        if (a != b && thingColors[a] == thingColors[b] && (thingShapes[a] == shapeA || thingShapes[a] == shapeB) && thingShapes[b] != shapeA && thingShapes[b] != shapeB && center(a, Y) >= center(b, Y)) {
           return false;
         }
       }
@@ -428,41 +428,21 @@ class ArrangeShapes extends Game {
     return position << 1 | axis;
   }
 
-  float thingDimension(int thing, int axis) {
+  float extent(int thing, int axis) {
     return shapeDimensions[index(thingShapes[thing], axis)];
   }
 
-  float midCoordinate(int thing, int axis, float offset) {
-    return thingCoordinates[index(thing, axis)] + thingDimension(thing, axis) * offset;
+  float position(int thing, int axis) {
+    return thingCoordinates[index(thing, axis)];
   }
 
-  float minX(int thing) {
-    return thingCoordinates[index(thing, X)];
-  }
-
-  float minY(int thing) {
-    return thingCoordinates[index(thing, Y)];
-  }
-
-  float centerX(int thing) {
-    return midCoordinate(thing, X, 0.5);
-  }
-
-  float centerY(int thing) {
-    return midCoordinate(thing, Y, 0.5);
-  }
-
-  float maxX(int thing) {
-    return midCoordinate(thing, X, 1.0);
-  }
-
-  float maxY(int thing) {
-    return midCoordinate(thing, Y, 1.0);
+  float center(int thing, int axis) {
+    return position(thing, axis) + extent(thing, axis) * 0.5;
   }
 
   void move(int thing, float targetX, float targetY) {
-    thingCoordinates[index(thing, X)] = constrain(targetX, INNER_MIN_X, INNER_MAX_X - thingDimension(thing, X));
-    thingCoordinates[index(thing, Y)] = constrain(targetY, INNER_MIN_Y, INNER_MAX_Y - thingDimension(thing, Y));
+    thingCoordinates[index(thing, X)] = constrain(targetX, INNER_MIN_X, INNER_MAX_X - extent(thing, X));
+    thingCoordinates[index(thing, Y)] = constrain(targetY, INNER_MIN_Y, INNER_MAX_Y - extent(thing, Y));
     thingPolygons[thing] = createPolygon(thing);
   }
 
@@ -471,10 +451,10 @@ class ArrangeShapes extends Game {
     polygon.beginShape();
     polygon.fill(thingColors[thing]);
     polygon.noStroke();
-    float x = minX(thing);
-    float y = minY(thing);
-    float w = thingDimension(thing, X);
-    float h = thingDimension(thing, Y);
+    float x = position(thing, X);
+    float y = position(thing, Y);
+    float w = extent(thing, X);
+    float h = extent(thing, Y);
     switch (thingShapes[thing]) {
     case SHAPE_TRIANGLE:
       polygon.vertex(x, y + h);
@@ -499,26 +479,30 @@ class ArrangeShapes extends Game {
     return polygon;
   }
 
-  boolean collidesWith(int thing, float targetX, float targetY) {
-    if (targetX < minX(thing) || targetX >= maxX(thing) || targetY < minY(thing) || targetY >= maxY(thing)) {
+  boolean thingsCollide(int thing, float x, float y) {
+    if (!boundsCollide(position(thing, X), position(thing, Y), extent(thing, X), extent(thing, Y), x, y, 0, 0, 0)) {
       return false;
     }
     PShape point = createShape();
     point.beginShape();
-    point.vertex(targetX, targetY);
+    point.vertex(x, y);
     point.endShape();
     return polygonsCollide(thingPolygons[thing], point);
   }
 
-  boolean collidesWith(int thingA, int thingB) {
-    if (!collidesWithBounds(thingA, thingB, 0)) {
+  boolean thingsCollide(int thingA, int thingB) {
+    if (!boundsCollide(thingA, thingB, 0)) {
       return false;
     }
     return polygonsCollide(thingPolygons[thingA], thingPolygons[thingB]);
   }
 
-  boolean collidesWithBounds(int a, int b, float space) {
-    return maxX(b) + space >= minX(a) && minX(b) - space < maxX(a) && maxY(b) + space >= minY(a) && minY(b) - space < maxY(a);
+  boolean boundsCollide(int a, int b, float space) {
+    return boundsCollide(position(a, X), position(a, Y), extent(a, X), extent(a, Y), position(b, X), position(b, Y), extent(b, X), extent(b, Y), space);
+  }
+
+  boolean boundsCollide(float x1, float y1, float w1, float h1, float x2, float y2, float w2, float h2, float s) {
+    return x2 + w2 + s >= x1 && x2 - s < x1 + w1 && y2 + h2 + s >= y1 && y2 - s < y1 + h1;
   }
 
   boolean polygonsCollide(PShape shapeA, PShape shapeB) {
