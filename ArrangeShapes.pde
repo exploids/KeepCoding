@@ -285,14 +285,6 @@ class ArrangeShapes extends Game {
     for (int thing = 0; thing < THING_COUNT; thing++) {
       shape(thingPolygons[thing]);
     }
-    /*if (draggedThing != null) {
-    stroke(colors[draggedThing.tint], 63);
-    strokeWeight(3);
-    line(OUTER_MIN_X, draggedThing.minY(), OUTER_MAX_X, draggedThing.minY());
-    line(OUTER_MIN_X, draggedThing.maxY(), OUTER_MAX_X, draggedThing.maxY());
-    line(draggedThing.minX(), OUTER_MIN_Y, draggedThing.minX(), OUTER_MAX_Y);
-    line(draggedThing.maxX(), OUTER_MIN_Y, draggedThing.maxX(), OUTER_MAX_Y);
-    }*/
   }
 
   void drawEnd() {
