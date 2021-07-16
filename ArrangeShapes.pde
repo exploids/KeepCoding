@@ -3,15 +3,22 @@ import processing.sound.*;
 class ArrangeShapes extends Game {
   final String PREFIX = "ArrangeShapes/";
 
+  final int THING_COUNT = 2;
+
+  final int AXIS_X = 0;
+  final int AXIS_Y = 1;
+
+  final int NONE = -1;
+
   final int SHAPE_RECTANGLE = 0;
   final int SHAPE_SQUARE = 1;
   final int SHAPE_TRIANGLE = 2;
   final int SHAPE_CIRCLE = 3;
 
-  final int PURPLE = 0;
-  final int YELLOW = 1;
-  final int GREEN = 2;
-  final int RED = 3;
+  final color PURPLE = #bc4a9b;
+  final color YELLOW = #ffd541;
+  final color GREEN = #5daf8d;
+  final color RED = #df3e23;
 
   final int INNER_MIN_X = 60;
   final int INNER_MIN_Y = 68;
@@ -40,7 +47,8 @@ class ArrangeShapes extends Game {
   final float CIRCLE_DIAMETER = sqrt(pow(SQUARE_SIZE, 2) / PI) * 2;
   final int CIRCLE_VERTICES = 16;
 
-  final color[] colors = new color[4];
+  final color[] colors = { PURPLE, YELLOW, GREEN, RED };
+  final float[] shapeDimensions = new float[8];
 
   boolean debug = false;
 
@@ -65,8 +73,12 @@ class ArrangeShapes extends Game {
   PGraphics sourceBuffer;
   PGraphics maskBuffer;
 
-  Thing[] things;
-  Thing draggedThing;
+  int[] thingShapes;
+  float[] thingCoordinates;
+  color[] thingColors;
+  PShape[] thingPolygons;
+  
+  int dragged = NONE;
   float dragDeltaX;
   float dragDeltaY;
   float dragOriginalX;
@@ -84,7 +96,7 @@ class ArrangeShapes extends Game {
 
   float collisionX;
   float collisionY;
-  Thing collidedThing;
+  int collided = NONE;
   float explosionDuration = 500;
   float explosionStart = -explosionDuration;
   float explosionX;
@@ -102,10 +114,14 @@ class ArrangeShapes extends Game {
 
   ArrangeShapes(int x, int y, PApplet sketch) {
     super(x, y, sketch);
-    colors[PURPLE] = #bc4a9b;
-    colors[YELLOW] = #ffd541;
-    colors[GREEN] = #5daf8d;
-    colors[RED] = #df3e23;
+    shapeDimensions[xIndex(SHAPE_RECTANGLE)] = RECTANGLE_WIDTH;
+    shapeDimensions[yIndex(SHAPE_RECTANGLE)] = RECTANGLE_HEIGHT;
+    shapeDimensions[xIndex(SHAPE_SQUARE)] = SQUARE_SIZE;
+    shapeDimensions[yIndex(SHAPE_SQUARE)] = SQUARE_SIZE;
+    shapeDimensions[xIndex(SHAPE_TRIANGLE)] = TRIANGLE_WIDTH;
+    shapeDimensions[yIndex(SHAPE_TRIANGLE)] = TRIANGLE_HEIGHT;
+    shapeDimensions[xIndex(SHAPE_CIRCLE)] = CIRCLE_DIAMETER;
+    shapeDimensions[yIndex(SHAPE_CIRCLE)] = CIRCLE_DIAMETER;
     frameImage = loadImage(PREFIX + "frame.png");
     filterImage = loadImage(PREFIX + "filter.png");
     glowImage = loadImage(PREFIX + "glow.png");
@@ -117,7 +133,12 @@ class ArrangeShapes extends Game {
     collideSound = new SoundFile(sketch, PREFIX + "collide.mp3");
     sourceBuffer = createGraphics(OUTER_WIDTH, OUTER_HEIGHT);
     maskBuffer = createGraphics(OUTER_WIDTH, OUTER_HEIGHT);
-    things = new Thing[10];
+
+    thingShapes = new int[THING_COUNT];
+    thingCoordinates = new float[THING_COUNT << 1];
+    thingColors = new color[THING_COUNT];
+    thingPolygons = new PShape[THING_COUNT];
+
     conditions = new boolean[4];
     fulfilledA = new boolean[conditions.length];
     fulfilledB = new boolean[conditions.length];
@@ -128,20 +149,19 @@ class ArrangeShapes extends Game {
 
   void update() {
     animationTime = millis();
-    if (draggedThing != null && isActive()) {
-      draggedThing.move(getMouseX() + dragDeltaX, getMouseY() + dragDeltaY);
-      for (int i = 0; i < things.length && draggedThing != null; i++) {
-        Thing collided = things[i];
-        if (collided != draggedThing && draggedThing.collidesWith(collided)) {
+    if (dragged != NONE && isActive()) {
+      move(dragged, getMouseX() + dragDeltaX, getMouseY() + dragDeltaY);
+      for (int other = 0; other < THING_COUNT && dragged != NONE; other++) {
+        if (other != dragged && collidesWith(dragged, other)) {
           explosionStart = animationTime;
-          collisionX = draggedThing.x;
-          collisionY = draggedThing.y;
-          collidedThing = draggedThing;
-          explosionX = (draggedThing.x + collided.x) * 0.5;
-          explosionY = (draggedThing.y + collided.y) * 0.5;
+          collisionX = xMin(dragged);
+          collisionY = yMin(dragged);
+          collided = dragged;
+          explosionX = (xCenter(dragged) + xCenter(other)) * 0.5;
+          explosionY = (yCenter(dragged) + yCenter(other)) * 0.5;
           explosionOffset = random(5) + 5;
           explosionAngle = random(TWO_PI);
-          draggedThing = null;
+          dragged = NONE;
           ownMistakes++;
           collideSound.play();
           cursor(ARROW);
@@ -162,10 +182,10 @@ class ArrangeShapes extends Game {
     if (explosionProgress > 0.25 && explosionProgress < 0.75) {
       float stepX = map(explosionProgress, 0.25, 0.75, collisionX, dragOriginalX);
       float stepY = map(explosionProgress, 0.25, 0.75, collisionY, dragOriginalY);
-      collidedThing.move(stepX, stepY);
-    } else if (explosionProgress >= 0.75 && collidedThing != null) {
-      collidedThing.move(dragOriginalX, dragOriginalY);
-      collidedThing = null;
+      move(collided, stepX, stepY);
+    } else if (explosionProgress >= 0.75 && collided != NONE) {
+      move(collided, dragOriginalX, dragOriginalY);
+      collided = NONE;
     }
   }
 
@@ -175,8 +195,8 @@ class ArrangeShapes extends Game {
     int animationEnd = animationStart + animationDuration;
     if (isActive()) {
       boolean move = false;
-      for (int i = 0; i < things.length; i++) {
-        if (things[i].collidesWith(getMouseX(), getMouseY())) {
+      for (int thing = 0; thing < THING_COUNT; thing++) {
+        if (collidesWith(thing, getMouseX(), getMouseY())) {
           move = true;
           break;
         }
@@ -262,8 +282,8 @@ class ArrangeShapes extends Game {
     fill(REGULAR_BACKGROUND_COLOR);
     noStroke();
     rect(OUTER_MIN_X, OUTER_MIN_Y, OUTER_WIDTH, OUTER_HEIGHT);
-    for (int i = 0; i < things.length; i++) {
-      things[i].draw();
+    for (int thing = 0; thing < THING_COUNT; thing++) {
+      shape(thingPolygons[thing]);
     }
     /*if (draggedThing != null) {
     stroke(colors[draggedThing.tint], 63);
@@ -291,13 +311,13 @@ class ArrangeShapes extends Game {
 
   void mousePress() {
     if (isActive() && animationTime > explosionStart + explosionDuration) {
-      for (int i = 0; i < things.length; i++) {
-        if (things[i].collidesWith(getMouseX(), getMouseY())) {
-          draggedThing = things[i];
-          dragOriginalX = draggedThing.x;
-          dragOriginalY = draggedThing.y;
-          dragDeltaX = draggedThing.x - getMouseX();
-          dragDeltaY = draggedThing.y - getMouseY();
+      for (int thing = 0; thing < THING_COUNT; thing++) {
+        if (collidesWith(thing, getMouseX(), getMouseY())) {
+          dragged = thing;
+          dragOriginalX = xMin(thing);
+          dragOriginalY = yMin(thing);
+          dragDeltaX = dragOriginalX - getMouseX();
+          dragDeltaY = dragOriginalY - getMouseY();
           playRandom(dragSound);
           break;
         }
@@ -306,8 +326,8 @@ class ArrangeShapes extends Game {
   }
 
   void mouseRelease() {
-    if (isActive() && draggedThing != null) {
-      draggedThing = null;
+    if (isActive() && dragged != NONE) {
+      dragged = NONE;
       playRandom(dropSound);
       checkSolved();
     }
@@ -317,29 +337,30 @@ class ArrangeShapes extends Game {
     int[] shapeCount = new int[4];
     int circleColorSum = 0;
     boolean yellowTriangle = false;
-    for (int i = 0; i < things.length; i++) {
-      Thing thing = new Thing();
-      thing.shape = int(random(4));
-      thing.tint = int(random(4));
-      shapeCount[thing.shape]++;
-      if (thing.shape == SHAPE_CIRCLE) {
-        circleColorSum += thing.tint + 1;
+    for (int thing = 0; thing < THING_COUNT; thing++) {
+      int shape = int(random(4));
+      int colorIndex = int(random(4));
+      color thingColor = colors[colorIndex];
+      thingShapes[thing] = shape;
+      thingColors[thing] = thingColor;
+      shapeCount[shape]++;
+      if (shape == SHAPE_CIRCLE) {
+        circleColorSum += colorIndex + 1;
       }
-      if (thing.shape == SHAPE_TRIANGLE && thing.tint == YELLOW) {
+      if (shape == SHAPE_TRIANGLE && thingColor == YELLOW) {
         yellowTriangle = true;
       }
       boolean notFinal = true;
       while (notFinal) {
-        thing.move(random(INNER_MIN_X, INNER_MAX_X - thing.width()), random(INNER_MIN_Y, INNER_MAX_Y - thing.height()));
+        move(thing, random(INNER_MIN_X, INNER_MAX_X - thingDimension(thing, AXIS_X)), random(INNER_MIN_Y, INNER_MAX_Y - thingDimension(thing, AXIS_Y)));
         notFinal = false;
-        for (int j = 0; j < i; j++) {
-          if (thing.collidesWithBounds(things[j], 4)) {
+        for (int other = 0; other < thing; other++) {
+          if (collidesWithBounds(thing, other, 4)) {
             notFinal = true;
             break;
           }
         }
       }
-      things[i] = thing;
     }
     conditions[0] = shapeCount[SHAPE_TRIANGLE] % 2 == 0;
     conditions[1] = shapeCount[SHAPE_SQUARE] > shapeCount[SHAPE_RECTANGLE];
@@ -382,24 +403,17 @@ class ArrangeShapes extends Game {
   }
 
   boolean isColorLeftOfColor(int left, int right) {
-    for (int i = 0; i < things.length; i++) {
-      for (int j = 0; j < things.length; j++) {
-        Thing a = things[i];
-        Thing b = things[j];
-        if (i != j && a.tint == left && b.tint == right && a.centerX() >= b.centerX()) {
-          return false;
-        }
-      }
-    }
-    return true;
+    return isColorCoordinateLess(left, right, AXIS_X);
   }
 
   boolean isColorAboveColor(int top, int bottom) {
-    for (int i = 0; i < things.length; i++) {
-      for (int j = 0; j < things.length; j++) {
-        Thing a = things[i];
-        Thing b = things[j];
-        if (i != j && a.tint == top && b.tint == bottom && a.centerY() >= b.centerY()) {
+    return isColorCoordinateLess(top, bottom, AXIS_Y);
+  }
+
+  boolean isColorCoordinateLess(int less, int greater, int axis) {
+    for (int a = 0; a < THING_COUNT; a++) {
+      for (int b = 0; b < THING_COUNT; b++) {
+        if (a != b && thingColors[a] == less && thingColors[b] == greater && midCoordinate(a, axis, 0.5) >= midCoordinate(b, axis, 0.5)) {
           return false;
         }
       }
@@ -408,11 +422,9 @@ class ArrangeShapes extends Game {
   }
 
   boolean areShapesOnTop(int shapeA, int shapeB) {
-    for (int i = 0; i < things.length; i++) {
-      for (int j = 0; j < things.length; j++) {
-        Thing a = things[i];
-        Thing b = things[j];
-        if (i != j && a.tint == b.tint && (a.shape == shapeA || a.shape == shapeB) && b.shape != shapeA && b.shape != shapeB && a.centerY() >= b.centerY()) {
+    for (int a = 0; a < THING_COUNT; a++) {
+      for (int b = 0; b < THING_COUNT; b++) {
+        if (a != b && thingColors[a] == thingColors[b] && (thingShapes[a] == shapeA || thingShapes[a] == shapeB) && thingShapes[b] != shapeA && thingShapes[b] != shapeB && yCenter(a) >= yCenter(b)) {
           return false;
         }
       }
@@ -420,125 +432,113 @@ class ArrangeShapes extends Game {
     return true;
   }
 
-  class Thing {
-    int shape;
-    float x;
-    float y;
-    int tint;
-    PShape polygon;
+  int toIndex(int position, int axis) {
+    return position << 1 | axis;
+  }
 
-    float width() {
-      switch (shape) {
-      case SHAPE_RECTANGLE:
-        return RECTANGLE_WIDTH;
-      case SHAPE_TRIANGLE:
-        return TRIANGLE_WIDTH;
-      case SHAPE_CIRCLE:
-        return CIRCLE_DIAMETER;
-      default:
-        return SQUARE_SIZE;
+  int xIndex(int position) {
+    return toIndex(position, AXIS_X);
+  }
+
+  int yIndex(int position) {
+    return toIndex(position, AXIS_Y);
+  }
+
+  float thingDimension(int thing, int axis) {
+    return shapeDimensions[toIndex(thingShapes[thing], axis)];
+  }
+
+  float midCoordinate(int thing, int axis, float offset) {
+    return thingCoordinates[toIndex(thing, axis)] + thingDimension(thing, axis) * offset;
+  }
+
+  float xMin(int thing) {
+    return thingCoordinates[xIndex(thing)];
+  }
+
+  float yMin(int thing) {
+    return thingCoordinates[yIndex(thing)];
+  }
+
+  float xCenter(int thing) {
+    return midCoordinate(thing, AXIS_X, 0.5);
+  }
+
+  float yCenter(int thing) {
+    return midCoordinate(thing, AXIS_Y, 0.5);
+  }
+
+  float xMax(int thing) {
+    return midCoordinate(thing, AXIS_X, 1.0);
+  }
+
+  float yMax(int thing) {
+    return midCoordinate(thing, AXIS_Y, 1.0);
+  }
+
+  void move(int thing, float targetX, float targetY) {
+    thingCoordinates[xIndex(thing)] = constrain(targetX, INNER_MIN_X, INNER_MAX_X - thingDimension(thing, AXIS_X));
+    thingCoordinates[yIndex(thing)] = constrain(targetY, INNER_MIN_Y, INNER_MAX_Y - thingDimension(thing, AXIS_Y));
+    thingPolygons[thing] = createPolygon(thing);
+  }
+
+  PShape createPolygon(int thing) {
+    PShape polygon = createShape();
+    polygon.beginShape();
+    polygon.fill(thingColors[thing]);
+    polygon.noStroke();
+    float x = thingCoordinates[xIndex(thing)];
+    float y = thingCoordinates[yIndex(thing)];
+    float w = thingDimension(thing, AXIS_X);
+    float h = thingDimension(thing, AXIS_Y);
+    switch (thingShapes[thing]) {
+    case SHAPE_TRIANGLE:
+      polygon.vertex(x, y + h);
+      polygon.vertex(x + 0.5 * w, y);
+      polygon.vertex(x + w, y + h);
+      break;
+    case SHAPE_CIRCLE:
+      float radius = w * 0.5;
+      for (int i = 0; i < CIRCLE_VERTICES; i++) {
+        float a = i * TWO_PI / CIRCLE_VERTICES;
+        polygon.vertex((cos(a) + 1) * radius + x, (sin(a) + 1) * radius + y);
       }
+      break;
+    default:
+      polygon.vertex(x, y);
+      polygon.vertex(x + w, y);
+      polygon.vertex(x + w, y + h);
+      polygon.vertex(x, y + h);
+      break;
     }
+    polygon.endShape(CLOSE);
+    return polygon;
+  }
 
-    float height() {
-      switch (shape) {
-      case SHAPE_RECTANGLE:
-        return RECTANGLE_HEIGHT;
-      case SHAPE_TRIANGLE:
-        return TRIANGLE_HEIGHT;
-      case SHAPE_CIRCLE:
-        return CIRCLE_DIAMETER;
-      default:
-        return SQUARE_SIZE;
-      }
+  boolean collidesWith(int thing, float targetX, float targetY) {
+    float minX = xMin(thing);
+    float minY = yMin(thing);
+    float maxX = xMax(thing);
+    float maxY = yMax(thing);
+    if (targetX < minX || targetX >= maxX || targetY < minY || targetY >= maxY) {
+      return false;
     }
+    PShape point = createShape();
+    point.beginShape();
+    point.vertex(targetX, targetY);
+    point.endShape();
+    return polygonsCollide(thingPolygons[thing], point);
+  }
 
-    float minX() {
-      return x;
+  boolean collidesWith(int thingA, int thingB) {
+    if (!collidesWithBounds(thingA, thingB, 0)) {
+      return false;
     }
+    return polygonsCollide(thingPolygons[thingA], thingPolygons[thingB]);
+  }
 
-    float minY() {
-      return y;
-    }
-
-    float maxX() {
-      return x + width();
-    }
-
-    float maxY() {
-      return y + height();
-    }
-    
-    float centerX() {
-      return (minX() + maxX()) * 0.5;
-    }
-    
-    float centerY() {
-      return (minY() + maxY()) * 0.5;
-    }
-
-    void move(float targetX, float targetY) {
-      x = constrain(targetX, INNER_MIN_X, INNER_MAX_X - width());
-      y = constrain(targetY, INNER_MIN_Y, INNER_MAX_Y - height());
-      polygon = createPolygon();
-    }
-
-    void draw() {
-      shape(polygon);
-    }
-
-    boolean collidesWith(float targetX, float targetY) {
-      if (!(targetX >= minX() && targetX < maxX() && targetY >= minY() && targetY < maxY())) {
-        return false;
-      }
-      PShape point = createShape();
-      point.beginShape();
-      point.vertex(targetX, targetY);
-      point.endShape();
-      return polygonsCollide(polygon, point);
-    }
-
-    boolean collidesWith(Thing other) {
-      if (!collidesWithBounds(other, 0)) {
-        return false;
-      }
-      return polygonsCollide(polygon, other.polygon);
-    }
-
-    boolean collidesWithBounds(Thing other, float space) {
-      return other.maxX() + space >= minX() && other.minX() - space < maxX() && other.maxY() + space >= minY() && other.minY() - space < maxY();
-    }
-
-    PShape createPolygon() {
-      PShape polygon = createShape();
-      polygon.beginShape();
-      polygon.fill(colors[tint]);
-      polygon.noStroke();
-      switch (shape) {
-      case SHAPE_TRIANGLE:
-        polygon.vertex(minX(), maxY());
-        polygon.vertex(minX() + width() * 0.5, minY());
-        polygon.vertex(maxX(), maxY());
-        break;
-      case SHAPE_CIRCLE:
-        float radius = width() * 0.5;
-        for (int i = 0; i < CIRCLE_VERTICES; i++) {
-          float angle = i * TWO_PI / CIRCLE_VERTICES;
-          float x = (cos(angle) + 1) * radius + minX();
-          float y = (sin(angle) + 1) * radius + minY();
-          polygon.vertex(x, y);
-        }
-        break;
-      default:
-        polygon.vertex(minX(), minY());
-        polygon.vertex(maxX(), minY());
-        polygon.vertex(maxX(), maxY());
-        polygon.vertex(minX(), maxY());
-        break;
-      }
-      polygon.endShape(CLOSE);
-      return polygon;
-    }
+  boolean collidesWithBounds(int a, int b, float space) {
+    return xMax(b) + space >= xMin(a) && xMin(b) - space < xMax(a) && yMax(b) + space >= yMin(a) && yMin(b) - space < yMax(a);
   }
 
   boolean polygonsCollide(PShape shapeA, PShape shapeB) {
