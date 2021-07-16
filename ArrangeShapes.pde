@@ -128,25 +128,23 @@ class ArrangeShapes extends Game {
 
   void update() {
     animationTime = millis();
-    if (draggedThing != null) {
-      if (isActive()) {
-        draggedThing.move(getMouseX() + dragDeltaX, getMouseY() + dragDeltaY);
-        for (int i = 0; i < things.length && draggedThing != null; i++) {
-          Thing collided = things[i];
-          if (collided != draggedThing && draggedThing.collidesWith(collided)) {
-            explosionStart = animationTime;
-            collisionX = draggedThing.x;
-            collisionY = draggedThing.y;
-            collidedThing = draggedThing;
-            explosionX = (draggedThing.x + collided.x) * 0.5;
-            explosionY = (draggedThing.y + collided.y) * 0.5;
-            explosionOffset = random(5) + 5;
-            explosionAngle = random(TWO_PI);
-            draggedThing = null;
-            ownMistakes++;
-            collideSound.play();
-            cursor(ARROW);
-          }
+    if (draggedThing != null && isActive()) {
+      draggedThing.move(getMouseX() + dragDeltaX, getMouseY() + dragDeltaY);
+      for (int i = 0; i < things.length && draggedThing != null; i++) {
+        Thing collided = things[i];
+        if (collided != draggedThing && draggedThing.collidesWith(collided)) {
+          explosionStart = animationTime;
+          collisionX = draggedThing.x;
+          collisionY = draggedThing.y;
+          collidedThing = draggedThing;
+          explosionX = (draggedThing.x + collided.x) * 0.5;
+          explosionY = (draggedThing.y + collided.y) * 0.5;
+          explosionOffset = random(5) + 5;
+          explosionAngle = random(TWO_PI);
+          draggedThing = null;
+          ownMistakes++;
+          collideSound.play();
+          cursor(ARROW);
         }
       }
     }
@@ -172,7 +170,7 @@ class ArrangeShapes extends Game {
   }
 
   void render() {
-    pushMatrix();
+    push();
     translate(deltaX, deltaY);
     int animationEnd = animationStart + animationDuration;
     if (isActive()) {
@@ -232,7 +230,7 @@ class ArrangeShapes extends Game {
         text((i + 1) + " " + conditions[i] + " " + fulfilledA[i] + " " + fulfilledB[i], 10, (i + 1) * 20);
       }
     }
-    popMatrix();
+    pop();
   }
 
   void renderExplosion() {
