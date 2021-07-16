@@ -3,7 +3,7 @@ import processing.sound.*;
 class ArrangeShapes extends Game {
   final String PREFIX = "ArrangeShapes/";
 
-  final int THING_COUNT = 2;
+  final int THING_COUNT = 10;
 
   final int X = 0;
   final int Y = 1;
@@ -42,13 +42,12 @@ class ArrangeShapes extends Game {
   final float SHAPE_AREA = pow(SQUARE_SIZE, 2);
   final float RECTANGLE_WIDTH = SQUARE_SIZE * 1.5;
   final float RECTANGLE_HEIGHT = SQUARE_SIZE / 1.5;
-  //final float TRIANGLE_WIDTH = squareSideLength / tan(radians(60)) * 2;
   final float TRIANGLE_WIDTH = sqrt(4 / sqrt(3) * SHAPE_AREA);
   final float TRIANGLE_HEIGHT = TRIANGLE_WIDTH * sqrt(3) * 0.5;
   final float CIRCLE_DIAMETER = sqrt(pow(SQUARE_SIZE, 2) / PI) * 2;
   final int CIRCLE_VERTICES = 16;
 
-  final float[] shapeDimensions = new float[8];
+  final float[] shapeExtents = new float[8];
 
   boolean debug = false;
 
@@ -74,7 +73,7 @@ class ArrangeShapes extends Game {
   PGraphics maskBuffer;
 
   int[] thingShapes;
-  float[] thingCoordinates;
+  float[] thingPositions;
   color[] thingColors;
   PShape[] thingPolygons;
   
@@ -114,14 +113,14 @@ class ArrangeShapes extends Game {
 
   ArrangeShapes(int x, int y, PApplet sketch) {
     super(x, y, sketch);
-    shapeDimensions[index(SHAPE_RECTANGLE, X)] = RECTANGLE_WIDTH;
-    shapeDimensions[index(SHAPE_RECTANGLE, Y)] = RECTANGLE_HEIGHT;
-    shapeDimensions[index(SHAPE_SQUARE, X)] = SQUARE_SIZE;
-    shapeDimensions[index(SHAPE_SQUARE, Y)] = SQUARE_SIZE;
-    shapeDimensions[index(SHAPE_TRIANGLE, X)] = TRIANGLE_WIDTH;
-    shapeDimensions[index(SHAPE_TRIANGLE, Y)] = TRIANGLE_HEIGHT;
-    shapeDimensions[index(SHAPE_CIRCLE, X)] = CIRCLE_DIAMETER;
-    shapeDimensions[index(SHAPE_CIRCLE, Y)] = CIRCLE_DIAMETER;
+    shapeExtents[index(SHAPE_RECTANGLE, X)] = RECTANGLE_WIDTH;
+    shapeExtents[index(SHAPE_RECTANGLE, Y)] = RECTANGLE_HEIGHT;
+    shapeExtents[index(SHAPE_SQUARE, X)] = SQUARE_SIZE;
+    shapeExtents[index(SHAPE_SQUARE, Y)] = SQUARE_SIZE;
+    shapeExtents[index(SHAPE_TRIANGLE, X)] = TRIANGLE_WIDTH;
+    shapeExtents[index(SHAPE_TRIANGLE, Y)] = TRIANGLE_HEIGHT;
+    shapeExtents[index(SHAPE_CIRCLE, X)] = CIRCLE_DIAMETER;
+    shapeExtents[index(SHAPE_CIRCLE, Y)] = CIRCLE_DIAMETER;
     frameImage = loadImage(PREFIX + "frame.png");
     filterImage = loadImage(PREFIX + "filter.png");
     glowImage = loadImage(PREFIX + "glow.png");
@@ -135,7 +134,7 @@ class ArrangeShapes extends Game {
     maskBuffer = createGraphics(OUTER_WIDTH, OUTER_HEIGHT);
 
     thingShapes = new int[THING_COUNT];
-    thingCoordinates = new float[THING_COUNT << 1];
+    thingPositions = new float[THING_COUNT << 1];
     thingColors = new color[THING_COUNT];
     thingPolygons = new PShape[THING_COUNT];
 
@@ -149,7 +148,7 @@ class ArrangeShapes extends Game {
 
   void update() {
     animationTime = millis();
-    if (dragged != NONE && isActive()) {
+    if (dragged != NONE && !solved) {
       move(dragged, getMouseX() + dragDeltaX, getMouseY() + dragDeltaY);
       for (int other = 0; other < THING_COUNT && dragged != NONE; other++) {
         if (other != dragged && thingsCollide(dragged, other)) {
@@ -193,7 +192,7 @@ class ArrangeShapes extends Game {
     push();
     translate(deltaX, deltaY);
     int animationEnd = animationStart + animationDuration;
-    if (isActive()) {
+    if (!solved) {
       boolean move = false;
       for (int thing = 0; thing < THING_COUNT; thing++) {
         if (thingsCollide(thing, getMouseX(), getMouseY())) {
@@ -203,7 +202,7 @@ class ArrangeShapes extends Game {
       }
       cursor(move ? MOVE : ARROW);
     }
-    if (isActive() || animationTime < animationEnd) {
+    if (!solved || animationTime < animationEnd) {
       drawShapes();
       primaryColor = REGULAR_BACKGROUND_COLOR;
     }
@@ -216,7 +215,7 @@ class ArrangeShapes extends Game {
       imageMode(CORNER);
     }
     renderExplosion();
-    if (!isActive()) {
+    if (solved) {
       drawEnd();
       primaryColor = SOLVED_BACKGROUND_COLOR;
     }
@@ -302,7 +301,7 @@ class ArrangeShapes extends Game {
   }
 
   void mousePress() {
-    if (isActive() && animationTime > explosionStart + explosionDuration) {
+    if (!solved && animationTime > explosionStart + explosionDuration) {
       for (int thing = 0; thing < THING_COUNT; thing++) {
         if (thingsCollide(thing, getMouseX(), getMouseY())) {
           dragged = thing;
@@ -318,7 +317,7 @@ class ArrangeShapes extends Game {
   }
 
   void mouseRelease() {
-    if (isActive() && dragged != NONE) {
+    if (!solved && dragged != NONE) {
       dragged = NONE;
       playRandom(dropSound);
       checkSolved();
@@ -390,10 +389,6 @@ class ArrangeShapes extends Game {
     return solved;
   }
 
-  boolean isActive() {
-    return !solved;
-  }
-
   boolean isColorLeftOfColor(int left, int right) {
     return isColorCoordinateLess(left, right, X);
   }
@@ -429,11 +424,11 @@ class ArrangeShapes extends Game {
   }
 
   float extent(int thing, int axis) {
-    return shapeDimensions[index(thingShapes[thing], axis)];
+    return shapeExtents[index(thingShapes[thing], axis)];
   }
 
   float position(int thing, int axis) {
-    return thingCoordinates[index(thing, axis)];
+    return thingPositions[index(thing, axis)];
   }
 
   float center(int thing, int axis) {
@@ -441,8 +436,8 @@ class ArrangeShapes extends Game {
   }
 
   void move(int thing, float targetX, float targetY) {
-    thingCoordinates[index(thing, X)] = constrain(targetX, INNER_MIN_X, INNER_MAX_X - extent(thing, X));
-    thingCoordinates[index(thing, Y)] = constrain(targetY, INNER_MIN_Y, INNER_MAX_Y - extent(thing, Y));
+    thingPositions[index(thing, X)] = constrain(targetX, INNER_MIN_X, INNER_MAX_X - extent(thing, X));
+    thingPositions[index(thing, Y)] = constrain(targetY, INNER_MIN_Y, INNER_MAX_Y - extent(thing, Y));
     thingPolygons[thing] = createPolygon(thing);
   }
 
