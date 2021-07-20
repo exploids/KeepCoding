@@ -91,7 +91,6 @@ class ArrangeShapes extends Game {
 
   int animationDuration = 500;
   int animationStart = -animationDuration;
-  color primaryColor;
 
   float collisionX;
   float collisionY;
@@ -156,8 +155,8 @@ class ArrangeShapes extends Game {
           collisionX = position(dragged, X);
           collisionY = position(dragged, Y);
           collided = dragged;
-          explosionX = (center(dragged, X) + center(other, X)) * 0.5;
-          explosionY = (center(dragged, Y) + center(other, Y)) * 0.5;
+          explosionX = lerp(center(dragged, X), center(other, X), 0.5);
+          explosionY = lerp(center(dragged, Y), center(other, Y), 0.5);
           explosionOffset = random(5) + 5;
           explosionAngle = random(TWO_PI);
           dragged = NONE;
@@ -202,6 +201,7 @@ class ArrangeShapes extends Game {
       }
       cursor(move ? MOVE : ARROW);
     }
+    color primaryColor = #000000;
     if (!solved || animationTime < animationEnd) {
       drawShapes();
       primaryColor = REGULAR_BACKGROUND_COLOR;
