@@ -47,7 +47,7 @@ class ArrangeShapes extends Game {
   final float CIRCLE_DIAMETER = sqrt(pow(SQUARE_SIZE, 2) / PI) * 2;
   final int CIRCLE_VERTICES = 16;
 
-  final float[] shapeExtents = new float[8];
+  final float[][] shapeExtents = new float[4][2];
 
   boolean debug = false;
 
@@ -73,7 +73,7 @@ class ArrangeShapes extends Game {
   PGraphics maskBuffer;
 
   int[] thingShapes;
-  float[] thingPositions;
+  float[][] positions;
   color[] thingColors;
   PShape[] thingPolygons;
   
@@ -112,14 +112,14 @@ class ArrangeShapes extends Game {
 
   ArrangeShapes(int x, int y, PApplet sketch) {
     super(x, y, sketch);
-    shapeExtents[index(SHAPE_RECTANGLE, X)] = RECTANGLE_WIDTH;
-    shapeExtents[index(SHAPE_RECTANGLE, Y)] = RECTANGLE_HEIGHT;
-    shapeExtents[index(SHAPE_SQUARE, X)] = SQUARE_SIZE;
-    shapeExtents[index(SHAPE_SQUARE, Y)] = SQUARE_SIZE;
-    shapeExtents[index(SHAPE_TRIANGLE, X)] = TRIANGLE_WIDTH;
-    shapeExtents[index(SHAPE_TRIANGLE, Y)] = TRIANGLE_HEIGHT;
-    shapeExtents[index(SHAPE_CIRCLE, X)] = CIRCLE_DIAMETER;
-    shapeExtents[index(SHAPE_CIRCLE, Y)] = CIRCLE_DIAMETER;
+    shapeExtents[SHAPE_RECTANGLE][X] = RECTANGLE_WIDTH;
+    shapeExtents[SHAPE_RECTANGLE][Y] = RECTANGLE_HEIGHT;
+    shapeExtents[SHAPE_SQUARE][X] = SQUARE_SIZE;
+    shapeExtents[SHAPE_SQUARE][Y] = SQUARE_SIZE;
+    shapeExtents[SHAPE_TRIANGLE][X] = TRIANGLE_WIDTH;
+    shapeExtents[SHAPE_TRIANGLE][Y] = TRIANGLE_HEIGHT;
+    shapeExtents[SHAPE_CIRCLE][X] = CIRCLE_DIAMETER;
+    shapeExtents[SHAPE_CIRCLE][Y] = CIRCLE_DIAMETER;
     frameImage = loadImage(PREFIX + "frame.png");
     filterImage = loadImage(PREFIX + "filter.png");
     glowImage = loadImage(PREFIX + "glow.png");
@@ -133,7 +133,7 @@ class ArrangeShapes extends Game {
     maskBuffer = createGraphics(OUTER_WIDTH, OUTER_HEIGHT);
 
     thingShapes = new int[THING_COUNT];
-    thingPositions = new float[THING_COUNT << 1];
+    positions = new float[THING_COUNT][2];
     thingColors = new color[THING_COUNT];
     thingPolygons = new PShape[THING_COUNT];
 
@@ -152,8 +152,8 @@ class ArrangeShapes extends Game {
       for (int other = 0; other < THING_COUNT && dragged != NONE; other++) {
         if (other != dragged && thingsCollide(dragged, other)) {
           explosionStart = animationTime;
-          collisionX = position(dragged, X);
-          collisionY = position(dragged, Y);
+          collisionX = positions[dragged][X];
+          collisionY = positions[dragged][Y];
           collided = dragged;
           explosionX = lerp(center(dragged, X), center(other, X), 0.5);
           explosionY = lerp(center(dragged, Y), center(other, Y), 0.5);
@@ -305,8 +305,8 @@ class ArrangeShapes extends Game {
       for (int thing = 0; thing < THING_COUNT; thing++) {
         if (thingsCollide(thing, getMouseX(), getMouseY())) {
           dragged = thing;
-          dragOriginalX = position(thing, X);
-          dragOriginalY = position(thing, Y);
+          dragOriginalX = positions[thing][X];
+          dragOriginalY = positions[thing][Y];
           dragDeltaX = dragOriginalX - getMouseX();
           dragDeltaY = dragOriginalY - getMouseY();
           playRandom(dragSound);
@@ -411,25 +411,17 @@ class ArrangeShapes extends Game {
     return true;
   }
 
-  int index(int position, int axis) {
-    return position << 1 | axis;
-  }
-
   float extent(int thing, int axis) {
-    return shapeExtents[index(thingShapes[thing], axis)];
-  }
-
-  float position(int thing, int axis) {
-    return thingPositions[index(thing, axis)];
+    return shapeExtents[thingShapes[thing]][axis];
   }
 
   float center(int thing, int axis) {
-    return position(thing, axis) + extent(thing, axis) * 0.5;
+    return positions[thing][axis] + extent(thing, axis) * 0.5;
   }
 
   void move(int thing, float targetX, float targetY) {
-    thingPositions[index(thing, X)] = constrain(targetX, INNER_MIN_X, INNER_MAX_X - extent(thing, X));
-    thingPositions[index(thing, Y)] = constrain(targetY, INNER_MIN_Y, INNER_MAX_Y - extent(thing, Y));
+    positions[thing][X] = constrain(targetX, INNER_MIN_X, INNER_MAX_X - extent(thing, X));
+    positions[thing][Y] = constrain(targetY, INNER_MIN_Y, INNER_MAX_Y - extent(thing, Y));
     thingPolygons[thing] = createPolygon(thing);
   }
 
@@ -438,8 +430,8 @@ class ArrangeShapes extends Game {
     polygon.beginShape();
     polygon.fill(thingColors[thing]);
     polygon.noStroke();
-    float x = position(thing, X);
-    float y = position(thing, Y);
+    float x = positions[thing][X];
+    float y = positions[thing][Y];
     float w = extent(thing, X);
     float h = extent(thing, Y);
     switch (thingShapes[thing]) {
@@ -467,7 +459,7 @@ class ArrangeShapes extends Game {
   }
 
   boolean thingsCollide(int thing, float x, float y) {
-    if (!boundsCollide(position(thing, X), position(thing, Y), extent(thing, X), extent(thing, Y), x, y, 0, 0, 0)) {
+    if (!boundsCollide(positions[thing][X], positions[thing][Y], extent(thing, X), extent(thing, Y), x, y, 0, 0, 0)) {
       return false;
     }
     PShape point = createShape();
@@ -485,7 +477,7 @@ class ArrangeShapes extends Game {
   }
 
   boolean boundsCollide(int a, int b, float space) {
-    return boundsCollide(position(a, X), position(a, Y), extent(a, X), extent(a, Y), position(b, X), position(b, Y), extent(b, X), extent(b, Y), space);
+    return boundsCollide(positions[a][X], positions[a][Y], extent(a, X), extent(a, Y), positions[b][X], positions[b][Y], extent(b, X), extent(b, Y), space);
   }
 
   boolean boundsCollide(float x1, float y1, float w1, float h1, float x2, float y2, float w2, float h2, float s) {
