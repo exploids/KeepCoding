@@ -1,24 +1,106 @@
 import processing.sound.*;
 
+/**
+ * Ein Modul, bei dem Formen so angeordnet werden müssen,
+ * dass alle im Handbuch beschriebenen Anforderungen erfüllt werden.
+ *
+ * @author Luca Selinski
+ */
 class ArrangeShapes extends Game {
-  final String PREFIX = "ArrangeShapes/";
-
+  /**
+   * Die Anzahl an Formen, die auf dem Modul platziert werden.
+   */
   final int THING_COUNT = 10;
 
+  /**
+   * Die Seitenlänge von Quadraten.
+   * Die Größen aller anderen Formen basieren ebenfalls auf dieser Größe.
+   */
+  final float SQUARE_SIZE = 24;
+
+  /**
+   * Der Farbwert für lila Formen.
+   */
+  final color PURPLE = #bc4a9b;
+
+  /**
+   * Der Farbwert für gelbe Formen.
+   */
+  final color YELLOW = #ffd541;
+
+  /**
+   * Der Farbwert für grüne Formen.
+   */
+  final color GREEN = #5daf8d;
+
+  /**
+   * Der Farbwert für rote Formen.
+   */
+  final color RED = #df3e23;
+
+  /**
+   * Die Dauer der Animation beim Lösen des Moduls in Millisekunden.
+   */
+  final int ANIMATION_DURATION = 500;
+
+  /**
+   * Die Dauer der Explosionsanimationen.
+   */
+  final int EXPLOSION_DURATION = 500;
+
+  /**
+   * Der Durchmesser der Explosionen.
+   */
+  final float EXPLOSION_DIAMETER = 140;
+
+  /**
+   * Das Detaillevel von Kreisen.
+   */
+  final int CIRCLE_VERTICES = 16;
+
+  /**
+   * Der Dateipfad, unter dem sich alle Ressourcen des Moduls befinden.
+   */
+  final String PREFIX = "ArrangeShapes/";
+
+  /**
+   * Die Konstante für die x-Achse.
+   */
   final int X = 0;
+
+  /**
+   * Die Konstante für die y-Achse.
+   */
   final int Y = 1;
 
+  /**
+   * Die Konstante das Fehlen eines Wertes.
+   */
   final int NONE = -1;
 
+  /**
+   * Die Konstante, die ein Rechteck, welches kein Quadrat ist, repräsentiert.
+   */
   final int SHAPE_RECTANGLE = 0;
+
+  /**
+   * Die Konstante, die ein Quadrat repräsentiert.
+   */
   final int SHAPE_SQUARE = 1;
+
+  /**
+   * Die Konstante, die ein Dreieck repräsentiert.
+   */
   final int SHAPE_TRIANGLE = 2;
+
+  /**
+   * Die Konstante, die einen Kreis repräsentiert.
+   */
   final int SHAPE_CIRCLE = 3;
 
-  final color PURPLE = #bc4a9b;
-  final color YELLOW = #ffd541;
-  final color GREEN = #5daf8d;
-  final color RED = #df3e23;
+  /**
+   * Ein Array aller vorhandenen Farben.
+   */
   final color[] COLORS = { PURPLE, YELLOW, GREEN, RED };
 
   final int INNER_MIN_X = 60;
@@ -38,38 +120,62 @@ class ArrangeShapes extends Game {
   final color FAILED_BACKGROUND_COLOR = #df3e23;
   final color SOLVED_BACKGROUND_COLOR = #5daf8d;
 
-  final float SQUARE_SIZE = 24;
-  final float SHAPE_AREA = pow(SQUARE_SIZE, 2);
-  final float RECTANGLE_WIDTH = SQUARE_SIZE * 1.5;
-  final float RECTANGLE_HEIGHT = SQUARE_SIZE / 1.5;
-  final float TRIANGLE_WIDTH = sqrt(4 / sqrt(3) * SHAPE_AREA);
-  final float TRIANGLE_HEIGHT = TRIANGLE_WIDTH * sqrt(3) * 0.5;
-  final float CIRCLE_DIAMETER = sqrt(pow(SQUARE_SIZE, 2) / PI) * 2;
-  final int CIRCLE_VERTICES = 16;
-
   final float[][] shapeExtents = new float[4][2];
 
-  boolean debug = false;
-
-  // http://sfxr.me/#111115tERS842cx1fzVL59biUbdKTdPt5y7ZgnpiyhfgAvhJjtVB9FdCc3EJ4LNjLy32fhNxeGPZNSQ16hXk3i3HjjDzYioHyAKkt5SoKAiMn9rCoKLu8PPu
+  /**
+   * Der Sound für das Ziehen eines Objektes.
+   *
+   * @see http://sfxr.me/#111115tERS842cx1fzVL59biUbdKTdPt5y7ZgnpiyhfgAvhJjtVB9FdCc3EJ4LNjLy32fhNxeGPZNSQ16hXk3i3HjjDzYioHyAKkt5SoKAiMn9rCoKLu8PPu
+   */
   SoundFile dragSound;
 
-  // http://sfxr.me/#34T6PksgCtRnhnhL4FipSMgvdTs6xqy9cV51hE4hXT8utYZinKUcmEraW7maxJFqAprpL7ey8v93zHyaaXoJPyJ8FhN7GeDF7NSpQqZ5cgLMPiWKMJyP45Ajh
+  /**
+   * Der Sound für das Loslassen eines Objektes.
+   *
+   * @see http://sfxr.me/#34T6PksgCtRnhnhL4FipSMgvdTs6xqy9cV51hE4hXT8utYZinKUcmEraW7maxJFqAprpL7ey8v93zHyaaXoJPyJ8FhN7GeDF7NSpQqZ5cgLMPiWKMJyP45Ajh
+   */
   SoundFile dropSound;
 
-  // http://sfxr.me/#34T6PkoDuHrK2s2itjmVPZMN5cJS7m5GAbH5qYk8PqKfaL9T8J28TPjkeUuEadW5WNG7Mfcqo9gy7kmVnqbrw7nDZgaKo5XWACN1WVLaXeWw7oFKYYyL7bt4P
-  SoundFile solveSound;
-
-  // http://sfxr.me/#7BMHBGDL2adeXGUejPTtTeJ8gsWdknZVP75kzvxaZzVy4jF7a3Pip4nB3egi61RiYVcVMtLMLLQLM3FsGHG6PcuHQyqVV5SvwBM9P7rVCQnKunJpzy77oWuY3
+  /**
+   * Der Sound für das Kollidieren von Objekten.
+   *
+   * @see http://sfxr.me/#7BMHBGDL2adeXGUejPTtTeJ8gsWdknZVP75kzvxaZzVy4jF7a3Pip4nB3egi61RiYVcVMtLMLLQLM3FsGHG6PcuHQyqVV5SvwBM9P7rVCQnKunJpzy77oWuY3
+   */
   SoundFile collideSound;
 
+  /**
+   * Das Bild, welches den Rahmen des Moduls darstellt.
+   */
   PImage frameImage;
+
+  /**
+   * Das Bild, welches mit den virtuellen Bildschirminhalt multipliziert wird.
+   */
   PImage filterImage;
+
+  /**
+   * Das Bild, welches den Leuchteffekt erzeugt.
+   */
   PImage glowImage;
+
+  /**
+   * Das Hinweis-Icon.
+   */
   PImage errorIcon;
+
+  /**
+   * Die genutzte Schriftart.
+   */
   PFont titleFont;
 
+  /**
+   * Der Framebuffer, welcher zum Zeichnen von Explosionen genutzt wird.
+   */
   PGraphics sourceBuffer;
+
+  /**
+   * Der Framebuffer, welcher zum Maskieren des ersten Framebuffers genutzt wird.
+   */
   PGraphics maskBuffer;
 
   int[] thingShapes;
@@ -88,18 +194,14 @@ class ArrangeShapes extends Game {
   boolean[] fulfilledB;
 
   int animationTime;
-
-  int animationDuration = 500;
-  int animationStart = -animationDuration;
+  int animationStart = -ANIMATION_DURATION;
 
   float collisionX;
   float collisionY;
   int collided = NONE;
-  float explosionDuration = 500;
-  float explosionStart = -explosionDuration;
+  int explosionStart = -EXPLOSION_DURATION;
   float explosionX;
   float explosionY;
-  float explosionDiameter = 140;
   float explosionOffset;
   float explosionAngle;
 
@@ -110,16 +212,29 @@ class ArrangeShapes extends Game {
   boolean dim = true;
   float dimEnd = 0;
 
+  /**
+   * Erzeugt eine neue Instanz des Moduls.
+   *
+   * @param x      der Versatz des Moduls entlang der x-Achse
+   * @param x      der Versatz des Moduls entlang der y-Achse
+   * @param sketch eine Referenz zum ausführenden PApplet
+   */
   ArrangeShapes(int x, int y, PApplet sketch) {
     super(x, y, sketch);
-    shapeExtents[SHAPE_RECTANGLE][X] = RECTANGLE_WIDTH;
-    shapeExtents[SHAPE_RECTANGLE][Y] = RECTANGLE_HEIGHT;
+    float shapeArea = pow(SQUARE_SIZE, 2);
+    float rectangleWidth = SQUARE_SIZE * 1.5;
+    float rectangleHeight = SQUARE_SIZE / 1.5;
+    float triangleWidth = sqrt(4 / sqrt(3) * shapeArea);
+    float triangleHeight = triangleWidth * sqrt(3) * 0.5;
+    float circleDiameter = sqrt(pow(SQUARE_SIZE, 2) / PI) * 2;
+    shapeExtents[SHAPE_RECTANGLE][X] = rectangleWidth;
+    shapeExtents[SHAPE_RECTANGLE][Y] = rectangleHeight;
     shapeExtents[SHAPE_SQUARE][X] = SQUARE_SIZE;
     shapeExtents[SHAPE_SQUARE][Y] = SQUARE_SIZE;
-    shapeExtents[SHAPE_TRIANGLE][X] = TRIANGLE_WIDTH;
-    shapeExtents[SHAPE_TRIANGLE][Y] = TRIANGLE_HEIGHT;
-    shapeExtents[SHAPE_CIRCLE][X] = CIRCLE_DIAMETER;
-    shapeExtents[SHAPE_CIRCLE][Y] = CIRCLE_DIAMETER;
+    shapeExtents[SHAPE_TRIANGLE][X] = triangleWidth;
+    shapeExtents[SHAPE_TRIANGLE][Y] = triangleHeight;
+    shapeExtents[SHAPE_CIRCLE][X] = circleDiameter;
+    shapeExtents[SHAPE_CIRCLE][Y] = circleDiameter;
     frameImage = loadImage(PREFIX + "frame.png");
     filterImage = loadImage(PREFIX + "filter.png");
     glowImage = loadImage(PREFIX + "glow.png");
@@ -127,16 +242,13 @@ class ArrangeShapes extends Game {
     titleFont = createFont(PREFIX + "GlacialIndifference-Bold.otf", 36);
     dragSound = new SoundFile(sketch, PREFIX + "drag.mp3");
     dropSound = new SoundFile(sketch, PREFIX + "drop.mp3");
-    solveSound = new SoundFile(sketch, PREFIX + "solve.mp3");
     collideSound = new SoundFile(sketch, PREFIX + "collide.mp3");
     sourceBuffer = createGraphics(OUTER_WIDTH, OUTER_HEIGHT);
     maskBuffer = createGraphics(OUTER_WIDTH, OUTER_HEIGHT);
-
     thingShapes = new int[THING_COUNT];
     positions = new float[THING_COUNT][2];
     thingColors = new color[THING_COUNT];
     thingPolygons = new PShape[THING_COUNT];
-
     conditions = new boolean[4];
     fulfilledA = new boolean[conditions.length];
     fulfilledB = new boolean[conditions.length];
@@ -145,6 +257,9 @@ class ArrangeShapes extends Game {
     } while (conditionsAreFulfilled());
   }
 
+  /**
+   * Führt einen Schritt der Spiellogik aus.
+   */
   void update() {
     animationTime = millis();
     if (dragged != NONE && !solved) {
@@ -176,7 +291,7 @@ class ArrangeShapes extends Game {
       int duration = dim ? 2000 : 8000;
       dimEnd = animationTime + random(duration) + 500;
     }
-    float explosionProgress = (animationTime - explosionStart) / explosionDuration;
+    float explosionProgress = float(animationTime - explosionStart) / EXPLOSION_DURATION;
     if (explosionProgress > 0.25 && explosionProgress < 0.75) {
       float stepX = map(explosionProgress, 0.25, 0.75, collisionX, dragOriginalX);
       float stepY = map(explosionProgress, 0.25, 0.75, collisionY, dragOriginalY);
@@ -187,10 +302,13 @@ class ArrangeShapes extends Game {
     }
   }
 
+  /**
+   * Zeichnet das Modul auf den Bildschirm.
+   */
   void render() {
     push();
     translate(deltaX, deltaY);
-    int animationEnd = animationStart + animationDuration;
+    int animationEnd = animationStart + ANIMATION_DURATION;
     if (!solved) {
       boolean move = false;
       for (int thing = 0; thing < THING_COUNT; thing++) {
@@ -206,7 +324,7 @@ class ArrangeShapes extends Game {
       drawShapes();
       primaryColor = REGULAR_BACKGROUND_COLOR;
     }
-    float factor = (animationTime - animationStart) / (float) animationDuration;
+    float factor = float(animationTime - animationStart) / ANIMATION_DURATION;
     if (animationTime >= animationStart && animationTime < animationEnd) {
       float boxWidth = OUTER_WIDTH * factor;
       float boxHeight = OUTER_HEIGHT * factor;
@@ -242,21 +360,17 @@ class ArrangeShapes extends Game {
     image(glowImage, 0, 0);
     blendMode(BLEND);
     noTint();
-    if (debug) {
-      fill(255, 0, 0);
-      textAlign(LEFT, BASELINE);
-      for (int i = 0; i < conditions.length; i++) {
-        text((i + 1) + " " + conditions[i] + " " + fulfilledA[i] + " " + fulfilledB[i], 10, (i + 1) * 20);
-      }
-    }
     pop();
   }
 
+  /**
+   * Zeichnet die Explosionsanimation, falls diese gerade läuft.
+   */
   void renderExplosion() {
-    float explosionProgress = (animationTime - explosionStart) / explosionDuration;
+    float explosionProgress = float(animationTime - explosionStart) / EXPLOSION_DURATION;
     if (explosionProgress > 0 && explosionProgress < 1) {
-      float diameter = explosionProgress * explosionDiameter;
-      float innerDiameter = max(explosionProgress - 0.5, 0) * 2 * (explosionDiameter + 2 * explosionOffset);
+      float diameter = explosionProgress * EXPLOSION_DIAMETER;
+      float innerDiameter = max(explosionProgress - 0.5, 0) * 2 * (EXPLOSION_DIAMETER + 2 * explosionOffset);
       float innerX = explosionX + cos(explosionAngle) * explosionOffset;
       float innerY = explosionY + sin(explosionAngle) * explosionOffset;
       sourceBuffer.beginDraw();
@@ -277,6 +391,9 @@ class ArrangeShapes extends Game {
     }
   }
 
+  /**
+   * Zeichnet die Formen auf dem Modul.
+   */ 
   void drawShapes() {
     fill(REGULAR_BACKGROUND_COLOR);
     noStroke();
@@ -286,6 +403,9 @@ class ArrangeShapes extends Game {
     }
   }
 
+  /**
+   * Zeichnet den „Deaktiviert“-Bildschirm.
+   */
   void drawEnd() {
     fill(SOLVED_BACKGROUND_COLOR);
     noStroke();
@@ -300,8 +420,11 @@ class ArrangeShapes extends Game {
     textAlign(LEFT, BASELINE);
   }
 
+  /**
+   * Behandelt das Drücken einer Maustaste.
+   */
   void mousePress() {
-    if (!solved && animationTime > explosionStart + explosionDuration) {
+    if (!solved && animationTime > explosionStart + EXPLOSION_DURATION) {
       for (int thing = 0; thing < THING_COUNT; thing++) {
         if (thingsCollide(thing, getMouseX(), getMouseY())) {
           dragged = thing;
@@ -316,14 +439,24 @@ class ArrangeShapes extends Game {
     }
   }
 
+  /**
+   * Behandelt das Loslassen einer Maustaste.
+   */
   void mouseRelease() {
     if (!solved && dragged != NONE) {
       dragged = NONE;
       playRandom(dropSound);
-      checkSolved();
+      if (conditionsAreFulfilled()) {
+        cursor(ARROW);
+        animationStart = millis();
+        solved = true;
+      }
     }
   }
 
+  /**
+   * Erzeugt die einzelnen Formen und platziert sie auf dem Modul.
+   */
   void generateShapes() {
     int[] shapeCount = new int[4];
     int circleColorSum = 0;
@@ -359,18 +492,20 @@ class ArrangeShapes extends Game {
     conditions[3] = circleColorSum % 2 != 0;
   }
 
+  /**
+   * Spielt einen Sound leicht zufällig verzerrt ab.
+   *
+   * @param sound der abzuspieldende Sound
+   */
   void playRandom(SoundFile sound) {
     sound.play(random(0.9, 1.2));
   }
 
-  void checkSolved() {
-    if (conditionsAreFulfilled()) {
-      cursor(ARROW);
-      animationStart = millis();
-      solved = true;
-    }
-  }
-
+  /**
+   * Prüft, ob alle im Handbuch festgelegten Anforderungen erfüllt sind.
+   *
+   * @return true, falls alle Anforderungen erfüllt sind
+   */
   boolean conditionsAreFulfilled() {
     fulfilledA[0] = colorIsLeftOrAboveColor(PURPLE, RED, Y);
     fulfilledB[0] = colorIsLeftOrAboveColor(YELLOW, PURPLE, X);
@@ -389,6 +524,15 @@ class ArrangeShapes extends Game {
     return solved;
   }
 
+  /**
+   * Prüft, ob alle Formen einer Farbe links von, beziehungsweise über allen Formen
+   * einer anderen Farbe liegen.
+   *
+   * @param less    die Farbe, die links, beziehungsweise oben liegen soll
+   * @param greater die Farbe, die rechts, beziehungsweise unten liegen soll
+   * @param axis    die Achse, um die geprüft werden soll
+   * @return true, falls die Anforderung erfüllt ist
+   */
   boolean colorIsLeftOrAboveColor(int less, int greater, int axis) {
     for (int a = 0; a < THING_COUNT; a++) {
       for (int b = 0; b < THING_COUNT; b++) {
@@ -400,6 +544,12 @@ class ArrangeShapes extends Game {
     return true;
   }
 
+  /**
+   * Prüft, ob bestimmte Formen jeweils über allen anderen Formen der selben Farbe liegen.
+   *
+   * @param shapes eine Bitmaske aller Formen, die oben liegen sollen
+   * @return true, falls die Anforderung erfüllt ist
+   */
   boolean shapesAreOnTop(int shapes) {
     for (int a = 0; a < THING_COUNT; a++) {
       for (int b = 0; b < THING_COUNT; b++) {
@@ -411,20 +561,47 @@ class ArrangeShapes extends Game {
     return true;
   }
 
+  /**
+   * Gibt eine Dimension einer Form zurück.
+   *
+   * @param thing der Index der Form
+   * @param axis  die Achse der Dimension
+   * @return die Dimension
+   */
   float extent(int thing, int axis) {
     return shapeExtents[thingShapes[thing]][axis];
   }
 
+  /**
+   * Gibt die Mittelkoordinate einer Form zurück.
+   *
+   * @param thing der Index der Form
+   * @param axis  die Achse der Mittelkoordinate
+   * @return die Mittelkoordinate
+   */
   float center(int thing, int axis) {
     return positions[thing][axis] + extent(thing, axis) * 0.5;
   }
 
+  /**
+   * Bewegt eine Form möglichst nah an eine Zielkoordinate, ohne das Modul zu verlassen.
+   *
+   * @param thing   der Index der Form
+   * @param targetX die x-Koordinate des Ziels
+   * @param targetY die y-Koordinate des Ziels
+   */
   void move(int thing, float targetX, float targetY) {
     positions[thing][X] = constrain(targetX, INNER_MIN_X, INNER_MAX_X - extent(thing, X));
     positions[thing][Y] = constrain(targetY, INNER_MIN_Y, INNER_MAX_Y - extent(thing, Y));
     thingPolygons[thing] = createPolygon(thing);
   }
 
+  /**
+   * Erzeugt ein Polygon für eine Form.
+   *
+   * @param thing der Index der Form
+   * @return das Polygon
+   */
   PShape createPolygon(int thing) {
     PShape polygon = createShape();
     polygon.beginShape();
@@ -458,6 +635,14 @@ class ArrangeShapes extends Game {
     return polygon;
   }
 
+  /**
+   * Prüft, ob eine Form mit einem Punkt kollidiert.
+   *
+   * @param thing der Index der Form
+   * @param x     die x-Koordinate des Punktes
+   * @param y     die y-Koordinate des Punktes
+   * @return true, falls eine Kollision vorliegt
+   */
   boolean thingsCollide(int thing, float x, float y) {
     if (!boundsCollide(positions[thing][X], positions[thing][Y], extent(thing, X), extent(thing, Y), x, y, 0, 0, 0)) {
       return false;
@@ -469,25 +654,67 @@ class ArrangeShapes extends Game {
     return polygonsCollide(thingPolygons[thing], point);
   }
 
-  boolean thingsCollide(int thingA, int thingB) {
-    if (!boundsCollide(thingA, thingB, 0)) {
-      return false;
-    }
-    return polygonsCollide(thingPolygons[thingA], thingPolygons[thingB]);
+  /**
+   * Prüft, ob zwei Formen miteinander kollidieren.
+   *
+   * @param a der Index der ersten Form
+   * @param b der Index der zweiten Form
+   * @return true, falls eine Kollision vorliegt
+   */
+  boolean thingsCollide(int a, int b) {
+    return boundsCollide(a, b, 0) && polygonsCollide(thingPolygons[a], thingPolygons[b]);
   }
 
+  /**
+   * Prüft, ob die AABBs von zwei Formen miteinander kollidieren.
+   * Eine Kollision wird erkannt, wenn beide AABBs einen gewählten Mindestabstand unterschreiten.
+   *
+   * @param a     der Index der ersten Form
+   * @param b     der Index der zweiten Form
+   * @param space der Mindestabstand
+   * @return true, falls eine Kollision vorliegt
+   */
   boolean boundsCollide(int a, int b, float space) {
     return boundsCollide(positions[a][X], positions[a][Y], extent(a, X), extent(a, Y), positions[b][X], positions[b][Y], extent(b, X), extent(b, Y), space);
   }
 
+  /**
+   * Prüft, ob zwei AABBs kollidieren.
+   * Eine Kollision wird erkannt, wenn beide AABBs einen gewählten Mindestabstand unterschreiten.
+   *
+   * @param x1 die x-Koordinate der linken Kante der ersten AABB
+   * @param y1 die y-Koordinate der oberen Kante der ersten AABB
+   * @param w1 die Breite der ersten AABB
+   * @param h1 die Höhe der ersten AABB
+   * @param x2 die x-Koordinate der linken Kante der zweiten AABB
+   * @param y2 die y-Koordinate der oberen Kante der zweiten AABB
+   * @param w2 die Breite der zweiten AABB
+   * @param h2 die Höhe der zweiten AABB
+   * @param s  der Mindestabstand
+   * @return true, falls eine Kollision vorliegt
+   */
   boolean boundsCollide(float x1, float y1, float w1, float h1, float x2, float y2, float w2, float h2, float s) {
     return x2 + w2 + s >= x1 && x2 - s < x1 + w1 && y2 + h2 + s >= y1 && y2 - s < y1 + h1;
   }
 
+  /**
+   * Prüft, ob zwei Polygone kollidieren.
+   *
+   * @param shapeA das erste Polygon
+   * @param shapeB das zweite Polygon
+   * @return true, falls eine Kollision vorliegt
+   */
   boolean polygonsCollide(PShape shapeA, PShape shapeB) {
     return checkHalfCollision(shapeA, shapeB) && checkHalfCollision(shapeB, shapeA);
   }
 
+  /**
+   * Führt eine halbe Kollisionsprüfung für zwei Polygone durch.
+   *
+   * @param shapeA das erste Polygon
+   * @param shapeB das zweite Polygon
+   * @return true, falls eine Kollision nicht ausgeschlossen werden kann
+   */
   boolean checkHalfCollision(PShape shapeA, PShape shapeB) {
     int countA = shapeA.getVertexCount();
     PVector start = new PVector();
@@ -520,6 +747,14 @@ class ArrangeShapes extends Game {
     return true;
   }
 
+  /**
+   * Projiziert ein Polygon auf eine Achse und berechnet die kleinste und höchste
+   * Koordinate des Polygons entlang der Achse.
+   *
+   * @param axis    die Achse
+   * @param polygon das Polygon
+   * @param minMax  der Vektor, in den die kleine und höchste Koodinate geschrieben werden soll
+   */
   void projectPolygon(PVector axis, PShape polygon, PVector minMax) {
     PVector vertex = new PVector();
     polygon.getVertex(0, vertex);
@@ -538,10 +773,20 @@ class ArrangeShapes extends Game {
     }
   }
 
+  /**
+   * Gibt die x-Koordinate der Maus innerhalb des Moduls zurück.
+   *
+   * @return die x-Koordinate der Maus
+   */
   float getMouseX() {
     return mouseX - deltaX;
   }
 
+  /**
+   * Gibt die y-Koordinate der Maus innerhalb des Moduls zurück.
+   *
+   * @return die y-Koordinate der Maus
+   */
   float getMouseY() {
     return mouseY - deltaY;
   }
