@@ -19,6 +19,11 @@ class ArrangeShapes extends Game {
   final float SQUARE_SIZE = 24;
 
   /**
+   * Der Mindestabstand, den Formen zu Beginn voneinander haben müssen.
+   */
+  final float GENERATION_SPACE = 4;
+
+  /**
    * Der Farbwert für lila Formen.
    */
   final color PURPLE = #bc4a9b;
@@ -104,42 +109,42 @@ class ArrangeShapes extends Game {
   final color[] COLORS = { PURPLE, YELLOW, GREEN, RED };
 
   /**
-   * Der innere Abstand des virtuellen Bildschirms von der linken Modulkante.
+   * Die x-Koordinate der linken inneren Kante des virtuellen Bildschirms.
    */
   final int INNER_MIN_X = 60;
 
   /**
-   * Der innere Abstand des virtuellen Bildschirms von der oberen Modulkante.
+   * Die y-Koordinate der oberen inneren Kante des virtuellen Bildschirms.
    */
   final int INNER_MIN_Y = 68;
 
   /**
-   * Der innere Abstand des virtuellen Bildschirms von der rechten Modulkante.
+   * Die x-Koordinate der rechten inneren Kante des virtuellen Bildschirms.
    */
   final int INNER_MAX_X = 339;
 
   /**
-   * Der innere Abstand des virtuellen Bildschirms von der unteren Modulkante.
+   * Die y-Koordinate der unteren inneren Kante des virtuellen Bildschirms.
    */
   final int INNER_MAX_Y = 334;
 
   /**
-   * Der äußere Abstand des virtuellen Bildschirms von der linken Modulkante.
+   * Die x-Koordinate der linken äußeren Kante des virtuellen Bildschirms.
    */
   final int OUTER_MIN_X = 55;
 
   /**
-   * Der äußere Abstand des virtuellen Bildschirms von der oberen Modulkante.
+   * Die y-Koordinate der oberen oberen Kante des virtuellen Bildschirms.
    */
   final int OUTER_MIN_Y = 62;
 
   /**
-   * Der äußere Abstand des virtuellen Bildschirms von der rechten Modulkante.
+   * Die x-Koordinate der rechten äußeren Kante des virtuellen Bildschirms.
    */
   final int OUTER_MAX_X = 355;
 
   /**
-   * Der äußere Abstand des virtuellen Bildschirms von der unteren Modulkante.
+   * Die y-Koordinate der unteren äußeren Kante des virtuellen Bildschirms.
    */
   final int OUTER_MAX_Y = 340;
 
@@ -612,7 +617,7 @@ class ArrangeShapes extends Game {
         move(thing, random(INNER_MIN_X, INNER_MAX_X - extent(thing, X)), random(INNER_MIN_Y, INNER_MAX_Y - extent(thing, Y)));
         notFinal = false;
         for (int other = 0; other < thing; other++) {
-          if (boundsCollide(thing, other, 4)) {
+          if (boundsCollide(thing, other, GENERATION_SPACE)) {
             notFinal = true;
             break;
           }
@@ -848,28 +853,18 @@ class ArrangeShapes extends Game {
     PVector axis = new PVector();
     PVector minMaxA = new PVector();
     PVector minMaxB = new PVector();
-
-    // Loop through all the edges of polygon A
     for (int i = 0; i < countA; i++) {
       shapeA.getVertex(i, start);
       shapeA.getVertex((i + 1) % countA, end);
       start.sub(end);
-
-      // Find the axis perpendicular to the current edge
       axis.set(-start.y, start.x);
       axis.normalize();
-
-      // Find the projection of the polygon on the current axis
       projectPolygon(axis, shapeA, minMaxA);
       projectPolygon(axis, shapeB, minMaxB);
-
-      // Check if the polygon projections are separated
       if (minMaxB.y < minMaxA.x || minMaxA.y < minMaxB.x) {
-        // they are separated, therefore the polygons cannot collide
         return false;
       }
     }
-    // looks like the polygons might not be separated, therefore they might be colliding
     return true;
   }
 
@@ -884,7 +879,6 @@ class ArrangeShapes extends Game {
   void projectPolygon(PVector axis, PShape polygon, PVector minMax) {
     PVector vertex = new PVector();
     polygon.getVertex(0, vertex);
-    // To project a point on an axis use the dot product
     float dotProduct = axis.dot(vertex);
     minMax.x = dotProduct;
     minMax.y = dotProduct;
