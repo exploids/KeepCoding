@@ -222,7 +222,7 @@ class ArrangeShapes extends Game {
   /**
    * Die Dimensionen der einzelnen Formen.
    */
-  final float[][] shapeExtents = new float[4][2];
+  final float[][] shapeExtents;
 
   /**
    * Die Formen der einzelnen Dinge auf dem Modul.
@@ -273,16 +273,6 @@ class ArrangeShapes extends Game {
    * Welche der Bedingungen erfüllt sind.
    */
   boolean[] conditions;
-
-  /**
-   * Welche der Anforderungen erfüllt sind.
-   */
-  boolean[] fulfilledA;
-
-  /**
-   * Welche der Gegenanforderungen erfüllt sind.
-   */
-  boolean[] fulfilledB;
 
   /**
    * Der aktuelle Zeitpunkt aller Animationen.
@@ -374,14 +364,12 @@ class ArrangeShapes extends Game {
     float triangleWidth = sqrt(4 / sqrt(3) * shapeArea);
     float triangleHeight = triangleWidth * sqrt(3) * 0.5;
     float circleDiameter = sqrt(pow(SQUARE_SIZE, 2) / PI) * 2;
-    shapeExtents[SHAPE_RECTANGLE][X] = rectangleWidth;
-    shapeExtents[SHAPE_RECTANGLE][Y] = rectangleHeight;
-    shapeExtents[SHAPE_SQUARE][X] = SQUARE_SIZE;
-    shapeExtents[SHAPE_SQUARE][Y] = SQUARE_SIZE;
-    shapeExtents[SHAPE_TRIANGLE][X] = triangleWidth;
-    shapeExtents[SHAPE_TRIANGLE][Y] = triangleHeight;
-    shapeExtents[SHAPE_CIRCLE][X] = circleDiameter;
-    shapeExtents[SHAPE_CIRCLE][Y] = circleDiameter;
+    shapeExtents = new float[][] {
+      {rectangleWidth, rectangleHeight},
+      {SQUARE_SIZE, SQUARE_SIZE},
+      {triangleWidth, triangleHeight},
+      {circleDiameter, circleDiameter}
+    };
     frameImage = loadImage(PREFIX + "frame.png");
     filterImage = loadImage(PREFIX + "filter.png");
     glowImage = loadImage(PREFIX + "glow.png");
@@ -397,8 +385,6 @@ class ArrangeShapes extends Game {
     thingColors = new color[THING_COUNT];
     thingPolygons = new PShape[THING_COUNT];
     conditions = new boolean[4];
-    fulfilledA = new boolean[conditions.length];
-    fulfilledB = new boolean[conditions.length];
     do {
       generateShapes();
     } while (conditionsAreFulfilled());
@@ -654,21 +640,14 @@ class ArrangeShapes extends Game {
    * @return true, falls alle Anforderungen erfüllt sind
    */
   boolean conditionsAreFulfilled() {
-    fulfilledA[0] = colorIsLeftOrAboveColor(PURPLE, RED, Y);
-    fulfilledB[0] = colorIsLeftOrAboveColor(YELLOW, PURPLE, X);
-    fulfilledA[1] = colorIsLeftOrAboveColor(PURPLE, GREEN, X);
-    fulfilledB[1] = colorIsLeftOrAboveColor(PURPLE, YELLOW, Y);
-    fulfilledA[2] = shapesAreOnTop(1 << SHAPE_TRIANGLE | 1 << SHAPE_CIRCLE);
-    fulfilledB[2] = shapesAreOnTop(1 << SHAPE_RECTANGLE | 1 << SHAPE_SQUARE);
-    fulfilledA[3] = colorIsLeftOrAboveColor(GREEN, RED, X);
-    fulfilledB[3] = colorIsLeftOrAboveColor(RED, YELLOW, X);
-    boolean solved = true;
-    for (int i = 0; i < conditions.length; i++) {
-      if (conditions[i] ? !fulfilledA[i] : !fulfilledB[i]) {
-        solved = false;
-      }
-    }
-    return solved;
+    return (conditions[0] ? colorIsLeftOrAboveColor(PURPLE, RED, Y)
+                          : colorIsLeftOrAboveColor(YELLOW, PURPLE, X))
+        && (conditions[1] ? colorIsLeftOrAboveColor(PURPLE, GREEN, X)
+                          : colorIsLeftOrAboveColor(PURPLE, YELLOW, Y))
+        && (conditions[2] ? shapesAreOnTop(1 << SHAPE_TRIANGLE | 1 << SHAPE_CIRCLE)
+                          : shapesAreOnTop(1 << SHAPE_RECTANGLE | 1 << SHAPE_SQUARE))
+        && (conditions[3] ? colorIsLeftOrAboveColor(GREEN, RED, X)
+                          : colorIsLeftOrAboveColor(RED, YELLOW, X));
   }
 
   /**
