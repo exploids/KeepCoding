@@ -103,24 +103,65 @@ class ArrangeShapes extends Game {
    */
   final color[] COLORS = { PURPLE, YELLOW, GREEN, RED };
 
+  /**
+   * Der innere Abstand des virtuellen Bildschirms von der linken Modulkante.
+   */
   final int INNER_MIN_X = 60;
+
+  /**
+   * Der innere Abstand des virtuellen Bildschirms von der oberen Modulkante.
+   */
   final int INNER_MIN_Y = 68;
+
+  /**
+   * Der innere Abstand des virtuellen Bildschirms von der rechten Modulkante.
+   */
   final int INNER_MAX_X = 339;
+
+  /**
+   * Der innere Abstand des virtuellen Bildschirms von der unteren Modulkante.
+   */
   final int INNER_MAX_Y = 334;
 
+  /**
+   * Der äußere Abstand des virtuellen Bildschirms von der linken Modulkante.
+   */
   final int OUTER_MIN_X = 55;
+
+  /**
+   * Der äußere Abstand des virtuellen Bildschirms von der oberen Modulkante.
+   */
   final int OUTER_MIN_Y = 62;
+
+  /**
+   * Der äußere Abstand des virtuellen Bildschirms von der rechten Modulkante.
+   */
   final int OUTER_MAX_X = 355;
+
+  /**
+   * Der äußere Abstand des virtuellen Bildschirms von der unteren Modulkante.
+   */
   final int OUTER_MAX_Y = 340;
+
+  /**
+   * Die äußere Breite des virtuellen Bildschirms.
+   */
   final int OUTER_WIDTH = OUTER_MAX_X - OUTER_MIN_X;
+
+  /**
+   * Die äußere Höhe des virtuellen Bildschirms.
+   */
   final int OUTER_HEIGHT = OUTER_MAX_Y - OUTER_MIN_Y;
 
-  final color OFF_COLOR = #322b28;
-  final color REGULAR_BACKGROUND_COLOR = OFF_COLOR;
-  final color FAILED_BACKGROUND_COLOR = #df3e23;
-  final color SOLVED_BACKGROUND_COLOR = #5daf8d;
+  /**
+   * Die reguläre Hintergrundfarbe des virtuellen Bildschirms.
+   */
+  final color REGULAR_BACKGROUND_COLOR = #322b28;
 
-  final float[][] shapeExtents = new float[4][2];
+  /**
+   * Die Hintergrundfarbe des virtuellen Bildschirms, sobald das Modul gelöst wurde.
+   */
+  final color SOLVED_BACKGROUND_COLOR = #5daf8d;
 
   /**
    * Der Sound für das Ziehen eines Objektes.
@@ -178,38 +219,144 @@ class ArrangeShapes extends Game {
    */
   PGraphics maskBuffer;
 
+  /**
+   * Die Dimensionen der einzelnen Formen.
+   */
+  final float[][] shapeExtents = new float[4][2];
+
+  /**
+   * Die Formen der einzelnen Dinge auf dem Modul.
+   */
   int[] thingShapes;
+
+  /**
+   * Die Positionen der Dinge auf dem Modul.
+   */
   float[][] positions;
+
+  /**
+   * Die Farben der Dinge auf dem Modul.
+   */
   color[] thingColors;
+
+  /**
+   * Die Polygone der Dinge auf dem Modul.
+   */
   PShape[] thingPolygons;
   
+  /**
+   * Der Index der Form, die gerade gezogen wird.
+   */
   int dragged = NONE;
+
+  /**
+   * Der Abstand entlang der x-Achse, um den die gezogene Form vom Mauszeiger verschoben ist.
+   */
   float dragDeltaX;
+
+  /**
+   * Der Abstand entlang der y-Achse, um den die gezogene Form vom Mauszeiger verschoben ist.
+   */
   float dragDeltaY;
+
+  /**
+   * Die x-Koordinate, an der sich die Form vor dem Ziehen befunden hat.
+   */
   float dragOriginalX;
+
+  /**
+   * Die y-Koordinate, an der sich die Form vor dem Ziehen befunden hat.
+   */
   float dragOriginalY;
 
+  /**
+   * Welche der Bedingungen erfüllt sind.
+   */
   boolean[] conditions;
+
+  /**
+   * Welche der Anforderungen erfüllt sind.
+   */
   boolean[] fulfilledA;
+
+  /**
+   * Welche der Gegenanforderungen erfüllt sind.
+   */
   boolean[] fulfilledB;
 
+  /**
+   * Der aktuelle Zeitpunkt aller Animationen.
+   */
   int animationTime;
+
+  /**
+   * Der Startzeitpunkt der Übergangsanimation zum Endbildschirm.
+   */
   int animationStart = -ANIMATION_DURATION;
 
+  /**
+   * Die x-Koordinate der gezogenen Form, als diese mit einer anderen Form kollidiert ist.
+   */
   float collisionX;
+
+  /**
+   * Die y-Koordinate der gezogenen Form, als diese mit einer anderen Form kollidiert ist.
+   */
   float collisionY;
+
+  /**
+   * Der Index der letzten Form, die beim Ziehen mit einer anderen Form kollidiert ist.
+   */
   int collided = NONE;
+
+  /**
+   * Der Startzeitpunkt der Explosionsanimation.
+   */
   int explosionStart = -EXPLOSION_DURATION;
+
+  /**
+   * Die x-Koordinate der Explosion.
+   */
   float explosionX;
+
+  /**
+   * Die y-Koordinate der Explosion.
+   */
   float explosionY;
+
+  /**
+   * Der Abstand, um den der innere Kreis der Explosion vom äußeren Kreis verschoben ist.
+   */
   float explosionOffset;
+
+  /**
+   * Der Winkel, um den der innere Kreis der Explosion vom äußeren Kreis verschoben ist.
+   */
   float explosionAngle;
 
+  /**
+   * Der Startzeitpunkt der Balkenanimation.
+   */
   float barStart;
+
+  /**
+   * Die Dauer der Balkenanimation.
+   */
   float barDuration;
+
+  /**
+   * Die Höhe des Balkens.
+   */
   float barSize;
 
+  /**
+   * Ob der Bildschirm aktuell gedimmt ist.
+   */
   boolean dim = true;
+
+  /**
+   * Der Zeitpunkt, an dem der Dimmstatus umgeschaltet wird.
+   */
   float dimEnd = 0;
 
   /**
@@ -349,7 +496,7 @@ class ArrangeShapes extends Game {
       rectMode(CORNERS);
       rect(OUTER_MIN_X, OUTER_MIN_Y, OUTER_MAX_X, OUTER_MAX_Y);
       rectMode(CORNER);
-      primaryColor = lerpColor(primaryColor, OFF_COLOR, 0.3);
+      primaryColor = lerpColor(primaryColor, #000000, 0.3);
     }
     blendMode(MULTIPLY);
     image(filterImage, 0, 0);
