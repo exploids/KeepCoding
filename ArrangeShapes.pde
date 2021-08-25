@@ -207,7 +207,7 @@ class ArrangeShapes extends Game {
   /**
    * Das Hinweis-Icon.
    */
-  PImage errorIcon;
+  PImage endImage;
 
   /**
    * Die genutzte Schriftart.
@@ -378,7 +378,7 @@ class ArrangeShapes extends Game {
     frameImage = loadImage(PREFIX + "frame.png");
     filterImage = loadImage(PREFIX + "filter.png");
     glowImage = loadImage(PREFIX + "glow.png");
-    errorIcon = loadImage(PREFIX + "error_icon.png");
+    endImage = loadImage(PREFIX + "end.png");
     titleFont = createFont(PREFIX + "GlacialIndifference-Bold.otf", 36);
     dragSound = new SoundFile(sketch, PREFIX + "drag.mp3");
     dropSound = new SoundFile(sketch, PREFIX + "drop.mp3");
@@ -548,14 +548,7 @@ class ArrangeShapes extends Game {
     fill(SOLVED_BACKGROUND_COLOR);
     noStroke();
     rect(OUTER_MIN_X, OUTER_MIN_Y, OUTER_WIDTH, OUTER_HEIGHT);
-    imageMode(CENTER);
-    image(errorIcon, OUTER_MIN_X + OUTER_WIDTH * 0.5, INNER_MIN_Y + 100);
-    imageMode(CORNER);
-    fill(255);
-    textFont(titleFont);
-    textAlign(CENTER, TOP);
-    text("DEAKTIVIERT", OUTER_MIN_X + OUTER_WIDTH * 0.5, INNER_MIN_Y + 140);
-    textAlign(LEFT, BASELINE);
+    image(endImage, 0, 0);
   }
 
   /**
