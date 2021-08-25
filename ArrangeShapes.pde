@@ -205,14 +205,9 @@ class ArrangeShapes extends Game {
   PImage glowImage;
 
   /**
-   * Das Hinweis-Icon.
+   * Der „Deaktiviert“-Bildschirm.
    */
   PImage endImage;
-
-  /**
-   * Die genutzte Schriftart.
-   */
-  PFont titleFont;
 
   /**
    * Der Framebuffer, welcher zum Zeichnen von Explosionen genutzt wird.
@@ -379,7 +374,6 @@ class ArrangeShapes extends Game {
     filterImage = loadImage(PREFIX + "filter.png");
     glowImage = loadImage(PREFIX + "glow.png");
     endImage = loadImage(PREFIX + "end.png");
-    titleFont = createFont(PREFIX + "GlacialIndifference-Bold.otf", 36);
     dragSound = new SoundFile(sketch, PREFIX + "drag.mp3");
     dropSound = new SoundFile(sketch, PREFIX + "drop.mp3");
     collideSound = new SoundFile(sketch, PREFIX + "collide.mp3");
@@ -404,18 +398,7 @@ class ArrangeShapes extends Game {
       move(dragged, getMouseX() + dragDeltaX, getMouseY() + dragDeltaY);
       for (int other = 0; other < THING_COUNT && dragged != NONE; other++) {
         if (other != dragged && thingsCollide(dragged, other)) {
-          explosionStart = animationTime;
-          collisionX = positions[dragged][X];
-          collisionY = positions[dragged][Y];
-          collided = dragged;
-          explosionX = lerp(center(dragged, X), center(other, X), 0.5);
-          explosionY = lerp(center(dragged, Y), center(other, Y), 0.5);
-          explosionOffset = random(5) + 5;
-          explosionAngle = random(TWO_PI);
-          dragged = NONE;
-          ownMistakes++;
-          collideSound.play();
-          cursor(ARROW);
+          handleCollision(other);
         }
       }
     }
@@ -470,18 +453,19 @@ class ArrangeShapes extends Game {
       clip((OUTER_MIN_X + OUTER_MAX_X) * 0.5, (OUTER_MIN_Y + OUTER_MAX_Y) * 0.5, boxWidth, boxHeight);
       imageMode(CORNER);
     }
-    renderExplosion();
     if (solved) {
       drawEnd();
       primaryColor = SOLVED_BACKGROUND_COLOR;
     }
     noClip();
+    renderExplosion();
     if (animationTime >= animationStart && animationTime < animationEnd) {
       primaryColor = lerpColor(REGULAR_BACKGROUND_COLOR, SOLVED_BACKGROUND_COLOR, factor);
     }
     fill(0, 31);
     noStroke();
     rect(OUTER_MIN_X, map(animationTime - barStart, 0, barDuration, OUTER_MIN_Y - barSize, OUTER_MAX_Y), OUTER_MAX_X - OUTER_MIN_X, barSize);
+    primaryColor = lerpColor(primaryColor, #ffffff, 0.3);
     if (dim) {
       fill(0, 31);
       rectMode(CORNERS);
@@ -630,6 +614,26 @@ class ArrangeShapes extends Game {
    */
   void playRandom(SoundFile sound) {
     sound.play(random(0.9, 1.2));
+  }
+
+  /**
+   * Behandelt die Kollision der gezogenen Form mit einer anderen Form.
+   *
+   * @param other der Index der anderen Form
+   */
+  void handleCollision(int other) {
+    explosionStart = animationTime;
+    collisionX = positions[dragged][X];
+    collisionY = positions[dragged][Y];
+    collided = dragged;
+    explosionX = lerp(center(dragged, X), center(other, X), 0.5);
+    explosionY = lerp(center(dragged, Y), center(other, Y), 0.5);
+    explosionOffset = random(5) + 5;
+    explosionAngle = random(TWO_PI);
+    dragged = NONE;
+    ownMistakes++;
+    collideSound.play();
+    cursor(ARROW);
   }
 
   /**
