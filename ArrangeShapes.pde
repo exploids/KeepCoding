@@ -438,7 +438,7 @@ class ArrangeShapes extends Game {
           break;
         }
       }
-      cursor(move ? MOVE : ARROW);
+      setCursor(move ? MOVE : ARROW);
     }
     color primaryColor = #000000;
     if (!solved || animationTime < animationEnd) {
@@ -562,7 +562,7 @@ class ArrangeShapes extends Game {
       dragged = NONE;
       playRandom(dropSound);
       if (conditionsAreFulfilled()) {
-        cursor(ARROW);
+        setCursor(ARROW);
         animationStart = millis();
         solved = true;
       }
@@ -633,7 +633,7 @@ class ArrangeShapes extends Game {
     dragged = NONE;
     ownMistakes++;
     collideSound.play();
-    cursor(ARROW);
+    setCursor(ARROW);
   }
 
   /**
@@ -906,5 +906,16 @@ class ArrangeShapes extends Game {
    */
   float getMouseY() {
     return mouseY - deltaY;
+  }
+
+  /**
+   * Setzt den Cursortyp, falls sich die Maus über diesem Modul befindet.
+   *
+   * @param type der Cursortyp
+   */
+  void setCursor(int type) {
+    if (getMouseX() >= 0 && getMouseX() < 400 && getMouseY() >= 0 && getMouseY() < 400) {
+      cursor(type);
+    }
   }
 }
